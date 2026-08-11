@@ -7,6 +7,7 @@ Usage:
 """
 
 import argparse
+from typing import Optional
 import torch
 import librosa
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
@@ -14,8 +15,13 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 SAMPLING_RATE = 16_000
 
 
-def transcribe(model_dir: str, audio_path: str, language: str | None = None) -> str:
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+def transcribe(model_dir: str, audio_path: str, language: Optional[str] = None) -> str:
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
 
     processor = WhisperProcessor.from_pretrained(model_dir)
     model = WhisperForConditionalGeneration.from_pretrained(model_dir).to(device)

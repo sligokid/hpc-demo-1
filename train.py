@@ -30,7 +30,6 @@ LANGUAGE_CODES = {
     "ar": "arabic",
 }
 
-# FLEURS language codes — no HF authentication required
 FLEURS_CODES = {
     "en": "en_us",
     "es": "es_419",
@@ -44,10 +43,10 @@ SAMPLING_RATE = 16_000
 
 
 def load_fleurs(language_code: str):
-    fleurs_lang = FLEURS_CODES[language_code]
+    fleurs_code = FLEURS_CODES[language_code]
     dataset = load_dataset(
         "google/fleurs",
-        fleurs_lang,
+        fleurs_code,
         split={"train": "train", "validation": "validation"},
     )
     columns_to_remove = [
@@ -55,7 +54,6 @@ def load_fleurs(language_code: str):
         if c not in ("audio", "transcription")
     ]
     dataset = dataset.remove_columns(columns_to_remove)
-    dataset = dataset.rename_column("transcription", "sentence")
     dataset = dataset.cast_column("audio", Audio(sampling_rate=SAMPLING_RATE))
     return dataset
 
@@ -66,7 +64,7 @@ def prepare_dataset(batch, processor, language_name):
         audio["array"], sampling_rate=audio["sampling_rate"]
     ).input_features[0]
 
-    batch["labels"] = processor.tokenizer(batch["sentence"]).input_ids
+    batch["labels"] = processor.tokenizer(batch["transcription"]).input_ids
     return batch
 
 
@@ -143,10 +141,15 @@ def main():
     dataset = dataset.map(
         lambda b: prepare_dataset(b, processor, language_name),
         remove_columns=dataset["train"].column_names,
-        num_proc=1,
+        num_proc=4,
     )
 
     data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
+
+    use_cuda = torch.cuda.is_available()
+    use_mps = not use_cuda and torch.backends.mps.is_available()
+    device_name = "cuda" if use_cuda else ("mps" if use_mps else "cpu")
+    print(f"[{args.language}] Device: {device_name}")
 
     training_args = Seq2SeqTrainingArguments(
         output_dir=args.output_dir,
@@ -156,8 +159,8 @@ def main():
         learning_rate=args.learning_rate,
         warmup_steps=100,
         num_train_epochs=args.epochs,
-        gradient_checkpointing=True,
-        fp16=torch.cuda.is_available(),
+        gradient_checkpointing=use_cuda,
+        fp16=use_cuda,
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
@@ -175,7 +178,7 @@ def main():
         args=training_args,
         train_dataset=dataset["train"],
         eval_dataset=dataset["validation"],
-        tokenizer=processor.feature_extractor,
+        processing_class=processor.feature_extractor,
         data_collator=data_collator,
         compute_metrics=lambda pred: compute_metrics_fn(pred, processor),
     )
