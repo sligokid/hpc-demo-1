@@ -17,12 +17,12 @@ echo "Job ID      : $SLURM_JOB_ID"
 echo "Array index : $SLURM_ARRAY_TASK_ID"
 echo "Language    : $LANG"
 echo "Node        : $(hostname)"
-echo "GPU         : $(nvidia-smi --query-gpu=name --format=csv,noheader)"
+echo "GPU         : $(rocm-smi --showproductname 2>/dev/null | grep 'Card Series' | head -1)"
 echo "============================================"
 
 # Load modules — adjust to your cluster's module system
 module load python/3.11
-module load cuda/12.1
+module load rocm/6.1
 
 # Activate virtualenv (create once with: python -m venv venv && pip install -r requirements.txt)
 source venv/bin/activate

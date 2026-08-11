@@ -1,3 +1,5 @@
+# AMD GPU (ROCm): replace this line with the ROCm wheel, e.g.:
+# pip install torch --index-url https://download.pytorch.org/whl/rocm6.1
 torch>=2.0.0
 transformers>=4.40.0
 datasets>=2.19.0

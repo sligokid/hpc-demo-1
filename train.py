@@ -160,7 +160,7 @@ def main():
         warmup_steps=100,
         num_train_epochs=args.epochs,
         gradient_checkpointing=use_cuda,
-        fp16=use_cuda,
+        bf16=use_cuda,
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
