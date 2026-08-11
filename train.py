@@ -1,5 +1,5 @@
 """
-Fine-tune openai/whisper-small on Mozilla Common Voice for a single language.
+Fine-tune openai/whisper-small on Google FLEURS for a single language.
 Intended to be launched as one job in a SLURM array (one language per job).
 
 Usage:
@@ -30,32 +30,32 @@ LANGUAGE_CODES = {
     "ar": "arabic",
 }
 
-COMMON_VOICE_SPLITS = {
-    "en": "en",
-    "es": "es",
-    "fr": "fr",
-    "zh-CN": "zh-CN",
-    "ar": "ar",
+# FLEURS language codes — no HF authentication required
+FLEURS_CODES = {
+    "en": "en_us",
+    "es": "es_419",
+    "fr": "fr_fr",
+    "zh-CN": "cmn_hans_cn",
+    "ar": "ar_eg",
 }
 
 MODEL_ID = "openai/whisper-small"
 SAMPLING_RATE = 16_000
 
 
-def load_common_voice(language_code: str):
-    split = COMMON_VOICE_SPLITS[language_code]
+def load_fleurs(language_code: str):
+    fleurs_lang = FLEURS_CODES[language_code]
     dataset = load_dataset(
-        "mozilla-foundation/common_voice_11_0",
-        split,
+        "google/fleurs",
+        fleurs_lang,
         split={"train": "train", "validation": "validation"},
-        trust_remote_code=True,
     )
-    # Keep only the columns we need
     columns_to_remove = [
         c for c in dataset["train"].column_names
-        if c not in ("audio", "sentence")
+        if c not in ("audio", "transcription")
     ]
     dataset = dataset.remove_columns(columns_to_remove)
+    dataset = dataset.rename_column("transcription", "sentence")
     dataset = dataset.cast_column("audio", Audio(sampling_rate=SAMPLING_RATE))
     return dataset
 
@@ -133,8 +133,8 @@ def main():
     model.generation_config.task = "transcribe"
     model.generation_config.forced_decoder_ids = None
 
-    print(f"[{args.language}] Loading Common Voice dataset...")
-    dataset = load_common_voice(args.language)
+    print(f"[{args.language}] Loading FLEURS dataset...")
+    dataset = load_fleurs(args.language)
 
     if args.max_train_samples:
         dataset["train"] = dataset["train"].select(range(args.max_train_samples))

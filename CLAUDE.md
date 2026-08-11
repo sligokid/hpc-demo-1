@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-SLICK+ HPC Demo — fine-tunes `openai/whisper-small` on Mozilla Common Voice across five languages (en, es, fr, zh-CN, ar) simultaneously using a SLURM job array (one GPU job per language). Demonstrates multilingual speech transcription training at HPC scale.
+SLICK+ HPC Demo — fine-tunes `openai/whisper-small` on Google FLEURS across five languages (en, es, fr, zh-CN, ar) simultaneously using a SLURM job array (one GPU job per language). Demonstrates multilingual speech transcription training at HPC scale.
 
 ## Setup
 
@@ -56,4 +56,4 @@ python infer.py --model_dir checkpoints/es --audio path/to/audio.wav
 
 To add a language: add it to `LANGUAGE_CODES` and `COMMON_VOICE_SPLITS` in `train.py`, add it to the `LANGUAGES` array in `submit.sh`, and expand `--array` to match.
 
-To swap in client audio data: replace the `load_common_voice()` call with a custom `datasets.Dataset` — the rest of the pipeline is data-source agnostic.
+To swap in client audio data: replace the `load_fleurs()` call with a custom `datasets.Dataset` — the rest of the pipeline is data-source agnostic.
