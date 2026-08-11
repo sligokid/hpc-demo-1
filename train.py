@@ -143,7 +143,7 @@ def main():
     dataset = dataset.map(
         lambda b: prepare_dataset(b, processor, language_name),
         remove_columns=dataset["train"].column_names,
-        num_proc=4,
+        num_proc=1,
     )
 
     data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
