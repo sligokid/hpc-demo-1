@@ -58,7 +58,8 @@ python train.py --language es --output_dir ./checkpoints/es --max_train_samples 
 **Full HPC run — all 5 languages in parallel:**
 ```bash
 mkdir -p logs
-sbatch submit.sh
+# sbatch submit.sh
+SIF=/scratch/project_465003209/mcgowank/hpc-demo-1/whisper-hpc.sif sbatch submit.sh
 ```
 
 Each language runs as an independent SLURM job (one GPU each). Monitor progress:
@@ -98,12 +99,20 @@ On HPC, all five jobs run concurrently — wall-clock time equals one language, 
 
 **Update the container image:** edit `requirements.txt` or the `Dockerfile`, then rebuild and push:
 ```bash
-#docker build -t ghcr.io/YOUR_ORG/whisper-hpc:latest .
-#docker push ghcr.io/YOUR_ORG/whisper-hpc:latest
 docker build -t sligokid/hpc-demo-1:latest .
-docker push sligokid/hpc-demo-1:latest
+# docker push sligokid/hpc-demo-1:latest
+docker buildx build --platform linux/amd64 -t sligokid/whisper-hpc:latest --push .
 
 
-#singularity pull --force ~/whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest
-singularity pull ~/whisper-hpc.sif docker://sligokid/hpc-demo-1:latest
+```
+## Set cache directories when using Docker containers
+
+When pulling or building from Docker containers using singularity, the conversion can be quite heavy. Speed up the conversion and avoid leaving behind temporary files by using the in-memory filesystem on /tmp as the Singularity cache directory, 
+
+i.e. On the worker node
+```bash
+$ mkdir -p /tmp/$USER
+$ export SINGULARITY_TMPDIR=/tmp/$USER
+$ export SINGULARITY_CACHEDIR=/tmp/$USER
+singularity pull whisper-hpc.sif docker://sligokid/whisper-hpc:latest
 ```

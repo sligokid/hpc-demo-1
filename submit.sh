@@ -3,7 +3,7 @@
 #SBATCH --array=0-4                  # one task per language
 #SBATCH --gres=gpu:1                 # 1 GPU per task
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/%A_%a.out      # logs/jobid_arrayindex.out
 #SBATCH --error=logs/%A_%a.err
@@ -31,10 +31,12 @@ mkdir -p "$HF_CACHE" logs "checkpoints/$LANG"
 # module load rocm/6.1
 
 singularity exec \
-    --rocm \
+    --bind /dev/kfd \
+    --bind /dev/dri \
     --bind "$PWD:/workspace" \
     --bind "$HF_CACHE:/hf_cache" \
     --env HF_HOME=/hf_cache \
+    --env LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib \
     "$SIF" \
     python /workspace/train.py \
         --language "$LANG" \
