@@ -1,0 +1,10 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/workspace
+    environment:
+      - HF_HOME=/workspace/.hf_cache
+    working_dir: /workspace

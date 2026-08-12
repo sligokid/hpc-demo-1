@@ -20,18 +20,25 @@ echo "Node        : $(hostname)"
 echo "GPU         : $(rocm-smi --showproductname 2>/dev/null | grep 'Card Series' | head -1)"
 echo "============================================"
 
-# Load modules — adjust to your cluster's module system
-module load python/3.11
-module load rocm/6.1
+# Path to the Singularity image (pull once with: singularity pull whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest)
+SIF=${SIF:-$HOME/whisper-hpc.sif}
 
-# Activate virtualenv (create once with: python -m venv venv && pip install -r requirements.txt)
-source venv/bin/activate
+# Shared HuggingFace dataset cache — avoids re-downloading FLEURS across all 5 jobs
+HF_CACHE=${HF_CACHE:-/scratch/$USER/hf_cache}
+mkdir -p "$HF_CACHE" logs "checkpoints/$LANG"
 
-mkdir -p logs checkpoints/$LANG
+# rocm/6.1 host drivers must be visible for --rocm to work; load if your cluster uses modules
+# module load rocm/6.1
 
-python train.py \
-    --language "$LANG" \
-    --output_dir "checkpoints/$LANG" \
-    --epochs 3 \
-    --batch_size 16 \
-    --learning_rate 1e-5
+singularity exec \
+    --rocm \
+    --bind "$PWD:/workspace" \
+    --bind "$HF_CACHE:/hf_cache" \
+    --env HF_HOME=/hf_cache \
+    "$SIF" \
+    python /workspace/train.py \
+        --language "$LANG" \
+        --output_dir "/workspace/checkpoints/$LANG" \
+        --epochs 3 \
+        --batch_size 16 \
+        --learning_rate 1e-5

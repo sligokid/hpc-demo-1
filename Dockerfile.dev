@@ -1,0 +1,18 @@
+# CPU-only image for Linux CI / contributors without GPU hardware.
+# Mac users: run train.py directly in your venv — Docker cannot access MPS (Apple GPU).
+# See README.md for local dev instructions.
+
+FROM python:3.9-slim
+
+WORKDIR /workspace
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+# Install CPU-only torch first, then the remaining deps.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+    && grep -v "^torch" requirements.txt | pip install --no-cache-dir -r /dev/stdin

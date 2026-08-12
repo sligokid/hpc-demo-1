@@ -14,18 +14,40 @@ Fine-tunes `openai/whisper-small` on [Google FLEURS](https://huggingface.co/data
 
 ## Setup
 
+### Mac (Apple Silicon) — local dev
+
+Run directly in a virtualenv. PyTorch's MPS backend is used automatically; Docker cannot access it.
+
 ```bash
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**AMD GPU (ROCm):** replace the `torch` line in `requirements.txt` with the ROCm wheel before installing:
+### Linux / CI — CPU-only Docker
+
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/rocm6.1
+docker compose run dev python train.py --language es --output_dir ./checkpoints/es --max_train_samples 200 --epochs 1
 ```
 
-## Training
+### HPC — Singularity (AMD/ROCm)
+
+Pull the image once on the login node (replace `YOUR_ORG`):
+
+```bash
+singularity pull ~/whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest
+```
+
+Then submit the job array (see [Training](#training) below). The `submit.sh` script invokes the container automatically.
+
+**To build and push a new image** (run locally with Docker installed):
+
+```bash
+docker build -t ghcr.io/YOUR_ORG/whisper-hpc:latest .
+docker push ghcr.io/YOUR_ORG/whisper-hpc:latest
+```
+
+## Training <a name="training"></a>
 
 **Smoke test — single language, small sample, no GPU required:**
 ```bash
@@ -72,3 +94,10 @@ On HPC, all five jobs run concurrently — wall-clock time equals one language, 
 **Add a language:** add entries to `LANGUAGE_CODES` and `FLEURS_CODES` in `train.py`, add the code to `LANGUAGES` in `submit.sh`, and expand `--array` to match.
 
 **Use client audio data:** replace the `load_fleurs()` call in `train.py` with a custom `datasets.Dataset` — the rest of the pipeline is data-source agnostic.
+
+**Update the container image:** edit `requirements.txt` or the `Dockerfile`, then rebuild and push:
+```bash
+docker build -t ghcr.io/YOUR_ORG/whisper-hpc:latest .
+docker push ghcr.io/YOUR_ORG/whisper-hpc:latest
+singularity pull --force ~/whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest
+```
