@@ -1,4 +1,4 @@
-FROM rocm/pytorch:rocm6.1_ubuntu22.04_py3.9_pytorch_2.1.2
+FROM rocm/pytorch:rocm6.1.3_ubuntu22.04_py3.10_pytorch_release-2.1.2
 
 WORKDIR /workspace
 

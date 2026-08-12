@@ -35,7 +35,8 @@ docker compose run dev python train.py --language es --output_dir ./checkpoints/
 Pull the image once on the login node (replace `YOUR_ORG`):
 
 ```bash
-singularity pull ~/whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest
+# singularity pull ~/whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest
+singularity pull ~/whisper-hpc.sif docker://sligokid/hpc-demo-1:latest
 ```
 
 Then submit the job array (see [Training](#training) below). The `submit.sh` script invokes the container automatically.
@@ -97,7 +98,12 @@ On HPC, all five jobs run concurrently — wall-clock time equals one language, 
 
 **Update the container image:** edit `requirements.txt` or the `Dockerfile`, then rebuild and push:
 ```bash
-docker build -t ghcr.io/YOUR_ORG/whisper-hpc:latest .
-docker push ghcr.io/YOUR_ORG/whisper-hpc:latest
-singularity pull --force ~/whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest
+#docker build -t ghcr.io/YOUR_ORG/whisper-hpc:latest .
+#docker push ghcr.io/YOUR_ORG/whisper-hpc:latest
+docker build -t sligokid/hpc-demo-1:latest .
+docker push sligokid/hpc-demo-1:latest
+
+
+#singularity pull --force ~/whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest
+singularity pull ~/whisper-hpc.sif docker://sligokid/hpc-demo-1:latest
 ```
