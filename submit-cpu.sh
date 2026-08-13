@@ -7,6 +7,8 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/%A_%a.out      # logs/jobid_arrayindex.out
 #SBATCH --error=logs/%A_%a.err
+#SBATCH --account=project_465003209
+#SBATCH --partition=small-g
 
 # Language list — index must match --array range
 LANGUAGES=("en" "es" "fr" "zh-CN" "ar")
@@ -21,10 +23,12 @@ echo "GPU         : $(rocm-smi --showproductname 2>/dev/null | grep 'Card Series
 echo "============================================"
 
 # Path to the Singularity image (pull once with: singularity pull whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest)
-SIF=${SIF:-$HOME/whisper-hpc.sif}
+#SIF=${SIF:-$HOME/whisper-hpc.sif}
+SIF=/scratch/project_465003209/mcgowank/hpc-demo-1/whisper-hpc.sif 
 
 # Shared HuggingFace dataset cache — avoids re-downloading FLEURS across all 5 jobs
-HF_CACHE=${HF_CACHE:-/scratch/$USER/hf_cache}
+#HF_CACHE=${HF_CACHE:-/scratch/$USER/hf_cache}
+HF_CACHE=${HF_CACHE:-/scratch/project_465003209/mcgowank/hf_cache}
 mkdir -p "$HF_CACHE" logs "checkpoints/$LANG"
 
 # rocm/6.1 host drivers must be visible for --rocm to work; load if your cluster uses modules
