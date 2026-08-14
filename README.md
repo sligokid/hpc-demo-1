@@ -1,4 +1,4 @@
-# SLICK+ HPC Demo — Multilingual Whisper Fine-Tuning
+# SLICK+ HPC Demo — Multilingual Whisper Fine-Tuning for ASR
 
 Fine-tunes `openai/whisper-small` on [Google FLEURS](https://huggingface.co/datasets/google/fleurs) across five languages simultaneously using a SLURM job array on HPC GPU infrastructure. Demonstrates how multilingual speech model training that would take weeks on standard infrastructure can be reduced to days.
 
@@ -24,60 +24,94 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Linux / CI — CPU-only Docker
+## Training <a name="training"></a>
+Checkpoints are saved per epoch to `checkpoints/<lang>/`. The best checkpoint (lowest WER) is restored automatically at the end of training.
+
+### Smoke test — single language, small sample — local dev
+
+GPU enabled if present but not required
+
+```bash
+python train.py --language es --output_dir ./checkpoints/es --max_train_samples 200 --epochs 1 --batch_size 2
+```
+
+### Linux / CI — CPU-only Docker (GPU not supported on Mac)
 
 ```bash
 docker compose run dev python train.py --language es --output_dir ./checkpoints/es --max_train_samples 200 --epochs 1
 ```
 
-### HPC — Singularity (AMD/ROCm)
-
-Pull the image once on the login node (replace `YOUR_ORG`):
-
-```bash
-# singularity pull ~/whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest
-singularity pull ~/whisper-hpc.sif docker://sligokid/hpc-demo-1:latest
-```
-
-Then submit the job array (see [Training](#training) below). The `submit.sh` script invokes the container automatically.
-
+## Build via Docker <a name="build"></a>
 **To build and push a new image** (run locally with Docker installed):
 
 ```bash
-docker build -t ghcr.io/YOUR_ORG/whisper-hpc:latest .
-docker push ghcr.io/YOUR_ORG/whisper-hpc:latest
+docker build -t sligokid/hpc-demo-1:latest .
+docker push sligokid/hpc-demo-1:latest
+```
+**To build update and push a new image with amd64 support** edit `requirements.txt` or the `Dockerfile`, then rebuild and push:
+
+```bash
+docker buildx build --platform linux/amd64 -t sligokid/whisper-hpc:latest --push .
 ```
 
-## Training <a name="training"></a>
+### HPC — Singularity conversion from Docker image (AMD/ROCm)
 
-**Smoke test — single language, small sample, no GPU required:**
+Pull the docker image once on the login node 
+
 ```bash
-python train.py --language es --output_dir ./checkpoints/es --max_train_samples 200 --epochs 1 --batch_size 2
+singularity pull ~/whisper-hpc.sif docker://sligokid/hpc-demo-1:latest
+```
+#### Set cache directories when using Docker containers
+
+When pulling or building from Docker containers using singularity, the conversion can be quite heavy. Speed up the conversion and avoid leaving behind temporary files by using the in-memory filesystem on /tmp as the Singularity cache directory, 
+
+i.e. On the worker node
+```bash
+$ mkdir -p /tmp/$USER
+$ export SINGULARITY_TMPDIR=/tmp/$USER
+$ export SINGULARITY_CACHEDIR=/tmp/$USER
+singularity pull whisper-hpc.sif docker://sligokid/whisper-hpc:latest
 ```
 
 **Full HPC run — all 5 languages in parallel:**
 ```bash
 mkdir -p logs
-# sbatch submit.sh
-SIF=/scratch/project_465003209/mcgowank/hpc-demo-1/whisper-hpc.sif sbatch submit.sh
+sbatch submit.sh
 ```
 
 Each language runs as an independent SLURM job (one GPU each). Monitor progress:
+
 ```bash
 squeue -u $USER
 tail -f logs/<jobid>_<arrayindex>.out
 ```
 
-Checkpoints are saved per epoch to `checkpoints/<lang>/`. The best checkpoint (lowest WER) is restored automatically at the end of training.
 
 ## Inference
-
+Audio of any length is supported — the pipeline chunks into overlapping 30-second windows automatically.
 ```bash
 python infer.py --model_dir checkpoints/es --audio path/to/audio.wav
 python infer.py --model_dir checkpoints/fr --audio path/to/audio.mp3 --language french
 ```
 
-Audio of any length is supported — the pipeline chunks into overlapping 30-second windows automatically.
+### HPC — Singularity (AMD/ROCm)
+```bash
+./infer-on-gpu.sh
+```
+### Example
+```srun: job 21098926 queued and waiting for resources
+srun: job 21098926 has been allocated resources
+/opt/conda/envs/py_3.10/lib/python3.10/site-packages/transformers/models/whisper/generation_whisper.py:509: FutureWarning: The input name `inputs` is deprecated. Please make sure to use `input_features` instead.
+  warnings.warn(
+You have passed task=transcribe, but also have set `forced_decoder_ids` to [[1, 50259], [2, 50359], [3, 50363]] which creates a conflict. `forced_decoder_ids` will be ignored in favor of task=transcribe.
+The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+Model : /workspace/checkpoints/en/
+Audio : /workspace/sligo-triathlon-club-inviting-women-to-try-a-tri.mp3
+Transcribing...
+
+Transcription:
+ we're going to talk triathlon right now on oceanfm sport because slago triathlon club are getting ready with their 2026 edition of the women's tria tri initiative and this is for female listeners if you've never tried a triathlon before this could be the time for you a 250 meter swim a 10 kilometer cycle and a 3km run we had the slagotriathland club in with us earlier this year for the men's triadri and now it's the turn of the women and in studio with me rosy dignam who's the women's officer for slagotriathland club and kirin maghann who is secretary of slagotri triathlon club folks thanks for coming in and rosa you were ideally placed to talk about this try a try initiative because you were one of the triers a couple of years ago yes...
+ ```
 
 ## How it works
 
@@ -97,22 +131,6 @@ On HPC, all five jobs run concurrently — wall-clock time equals one language, 
 
 **Use client audio data:** replace the `load_fleurs()` call in `train.py` with a custom `datasets.Dataset` — the rest of the pipeline is data-source agnostic.
 
-**Update the container image:** edit `requirements.txt` or the `Dockerfile`, then rebuild and push:
-```bash
-docker build -t sligokid/hpc-demo-1:latest .
-# docker push sligokid/hpc-demo-1:latest
-docker buildx build --platform linux/amd64 -t sligokid/whisper-hpc:latest --push .
 
-
-```
-## Set cache directories when using Docker containers
-
-When pulling or building from Docker containers using singularity, the conversion can be quite heavy. Speed up the conversion and avoid leaving behind temporary files by using the in-memory filesystem on /tmp as the Singularity cache directory, 
-
-i.e. On the worker node
-```bash
-$ mkdir -p /tmp/$USER
-$ export SINGULARITY_TMPDIR=/tmp/$USER
-$ export SINGULARITY_CACHEDIR=/tmp/$USER
-singularity pull whisper-hpc.sif docker://sligokid/whisper-hpc:latest
-```
+## References:
+https://huggingface.co/blog/fine-tune-whisper
