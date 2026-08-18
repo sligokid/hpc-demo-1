@@ -10,42 +10,35 @@ import argparse
 from typing import Optional
 import torch
 import librosa
-from transformers import WhisperProcessor, WhisperForConditionalGeneration
+from transformers import pipeline
 
 SAMPLING_RATE = 16_000
 
 
 def transcribe(model_dir: str, audio_path: str, language: Optional[str] = None, task: str = "transcribe") -> str:
     if torch.cuda.is_available():
-        device = "cuda"
+        device = 0  # pipeline expects int device index for CUDA
     elif torch.backends.mps.is_available():
         device = "mps"
     else:
-        device = "cpu"
+        device = -1  # CPU
 
-    processor = WhisperProcessor.from_pretrained(model_dir)
-    model = WhisperForConditionalGeneration.from_pretrained(model_dir).to(device)
-    model.eval()
+    generate_kwargs = {"task": task}
+    if language:
+        generate_kwargs["language"] = language
 
     audio, _ = librosa.load(audio_path, sr=SAMPLING_RATE, mono=True)
-    inputs = processor(audio, sampling_rate=SAMPLING_RATE, return_tensors="pt")
-    input_features = inputs.input_features.to(device)
 
-    forced_decoder_ids = None
-    if language:
-        forced_decoder_ids = processor.get_decoder_prompt_ids(
-            language=language, task=task
-        )
-    elif task == "translate":
-        forced_decoder_ids = processor.get_decoder_prompt_ids(task="translate")
+    pipe = pipeline(
+        "automatic-speech-recognition",
+        model=model_dir,
+        device=device,
+        chunk_length_s=30,
+        stride_length_s=5,
+    )
 
-    with torch.no_grad():
-        predicted_ids = model.generate(
-            input_features,
-            forced_decoder_ids=forced_decoder_ids,
-        )
-
-    return processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+    result = pipe({"array": audio, "sampling_rate": SAMPLING_RATE}, generate_kwargs=generate_kwargs)
+    return result["text"]
 
 
 def main():
@@ -65,7 +58,8 @@ def main():
     print(f"Model : {args.model_dir}")
     print(f"Audio : {args.audio}")
     label = "Translation" if args.task == "translate" else "Transcription"
-    print(f"{label}ing...")
+    verb = "Translating" if args.task == "translate" else "Transcribing"
+    print(f"{verb}...")
     result = transcribe(args.model_dir, args.audio, args.language, args.task)
     print(f"\n{label}:\n{result}")
 

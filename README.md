@@ -149,3 +149,5 @@ On HPC, all five jobs run concurrently — wall-clock time equals one language, 
 
 ## References:
 https://huggingface.co/blog/fine-tune-whisper
+https://www.learn-spanish-faster.com/articles/spanish-phrases-free-mp3-download.html
+
