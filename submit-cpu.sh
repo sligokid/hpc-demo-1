@@ -35,16 +35,19 @@ mkdir -p "$HF_CACHE" logs "checkpoints/$LANG"
 # module load rocm/6.1
 
 singularity exec \
-    --bind /dev/kfd \
-    --bind /dev/dri \
+    --rocm \
     --bind "$PWD:/workspace" \
     --bind "$HF_CACHE:/hf_cache" \
     --env HF_HOME=/hf_cache \
-    --env LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib \
     "$SIF" \
-    python /workspace/train.py \
-        --language "$LANG" \
-        --output_dir "/workspace/checkpoints/$LANG" \
-        --epochs 3 \
-        --batch_size 16 \
-        --learning_rate 1e-5
+    bash -c "
+        export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
+        export MIOPEN_USER_DB_PATH=/workspace/.miopen_cache
+        mkdir -p /workspace/.miopen_cache
+        python /workspace/train.py \
+            --language '$LANG' \
+            --output_dir '/workspace/checkpoints/$LANG' \
+            --epochs 3 \
+            --batch_size 64 \
+            --learning_rate 1e-5
+    "
