@@ -149,6 +149,35 @@ Translation:
  hello or hello who is speaking? from whom? speak Guillermo one moment I would like to talk to Guillermo she is not at home can I leave a message no está en casa puedo dejarle un recado sabe usted cuando regresa? yo le hablo por yo le hablo para atrás luego puede hablar más despacio se encuentra guillermo I speak back later. Can I speak more slowly? Is Guillermo here? I am busy. Can I speak later?
 ```
 
+## Pipeline Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  TRAINING  (HPC — 5 parallel SLURM jobs)                │
+│                                                         │
+│  Google FLEURS  ──►  train.py  ──►  checkpoints/<lang>  │
+│  (en, es, fr,         x5 GPUs                           │
+│   zh-CN, ar)          in parallel                       │
+└─────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────┐
+│  TRANSCRIPTION  (local or HPC)                          │
+│                                                         │
+│  audio file  ──►  infer.py  ──►  transcript (text)      │
+│                   (Whisper)                             │
+└─────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────┐
+│  METADATA GENERATION  (local — Ollama)                  │
+│                                                         │
+│  transcript  ──►  analyze.py  ──►  metadata (JSON)      │
+│                   (llama3)         title, description,  │
+│                                    tags, goals, skills  │
+└─────────────────────────────────────────────────────────┘
+```
+
 ## How it works
 
 Whisper is an encoder-decoder transformer pretrained by OpenAI on 680,000 hours of multilingual audio. Fine-tuning adapts it to the acoustic style of a specific domain (in this case, FLEURS read speech) without training from scratch.
