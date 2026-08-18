@@ -113,9 +113,11 @@ python infer.py --model_dir checkpoints/es --audio path/to/audio.wav --task tran
 ```bash
 ./infer-on-gpu.sh
 ```
-### Example
-```srun: job 21098926 queued and waiting for resources
-srun: job 21098926 has been allocated resources
+### Transcription Example
+```
+mcgowank@uan18:~/scratch/mcgowank/hpc-demo-1> bash infer-on-gpu.sh
+srun: job 21352183 queued and waiting for resources
+srun: job 21352183 has been allocated resources
 /opt/conda/envs/py_3.10/lib/python3.10/site-packages/transformers/models/whisper/generation_whisper.py:509: FutureWarning: The input name `inputs` is deprecated. Please make sure to use `input_features` instead.
   warnings.warn(
 You have passed task=transcribe, but also have set `forced_decoder_ids` to [[1, 50259], [2, 50359], [3, 50363]] which creates a conflict. `forced_decoder_ids` will be ignored in favor of task=transcribe.
@@ -128,6 +130,23 @@ Transcription:
  we're going to talk triathlon right now on oceanfm sport because slago triathlon club are getting ready with their 2026 edition of the women's tria tri initiative and this is for female listeners if you've never tried a triathlon before this could be the time for you a 250 meter swim a 10 kilometer cycle and a 3km run we had the slagotriathland club in with us earlier this year for the men's triadri and now it's the turn of the women and in studio with me rosy dignam who's the women's officer for slagotriathland club and kirin maghann who is secretary of slagotri triathlon club folks thanks for coming in and rosa you were ideally placed to talk about this try a try initiative because you were one of the triers a couple of years ago yes...
  ```
 
+### Translation ES -> En Example
+```
+mcgowank@uan18:~/scratch/mcgowank/hpc-demo-1> bash infer-translate-on-gpu.sh
+srun: job 21352472 queued and waiting for resources
+srun: job 21352472 has been allocated resources
+/opt/conda/envs/py_3.10/lib/python3.10/site-packages/transformers/models/whisper/generation_whisper.py:509: FutureWarning: The input name `inputs` is deprecated. Please make sure to use `input_features` instead.
+  warnings.warn(
+You have passed task=translate, but also have set `forced_decoder_ids` to [[1, 50259], [2, 50359], [3, 50363]] which creates a conflict. `forced_decoder_ids` will be ignored in favor of task=translate.
+The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+Model : /workspace/checkpoints/es/
+Audio : /workspace/spanish-telephone-phrases.mp3
+Translating...
+
+Translation:
+ hello or hello who is speaking? from whom? speak Guillermo one moment I would like to talk to Guillermo she is not at home can I leave a message no está en casa puedo dejarle un recado sabe usted cuando regresa? yo le hablo por yo le hablo para atrás luego puede hablar más despacio se encuentra guillermo I speak back later. Can I speak more slowly? Is Guillermo here? I am busy. Can I speak later?
+```
+
 ## How it works
 
 Whisper is an encoder-decoder transformer pretrained by OpenAI on 680,000 hours of multilingual audio. Fine-tuning adapts it to the acoustic style of a specific domain (in this case, FLEURS read speech) without training from scratch.
@@ -139,6 +158,21 @@ Each training job:
 4. Evaluates Word Error Rate (WER) on the validation set each epoch
 
 On HPC, all five jobs run concurrently — wall-clock time equals one language, not five.
+
+### How translation works — and why it has limits
+
+Whisper's decoder is conditioned on two special tokens at the start of every output sequence: a **language token** and a **task token** (`<|transcribe|>` or `<|translate|>`). Switching `--task translate` swaps the task token, instructing the decoder to produce English text instead of reproducing the source language.
+
+**Why the checkpoints weren't fine-tuned for translation:**
+The five checkpoints in this project were trained exclusively with `task=transcribe` — the decoder was always asked to reproduce the source-language text. The translation head (the weights that map from `<|translate|>` to English tokens) was never updated during fine-tuning; it retains OpenAI's pretrained values.
+
+**What this means in practice:**
+- Transcription quality benefits from fine-tuning on FLEURS. Translation quality does not — it reflects `openai/whisper-small`'s pretrained translation capability, which is weaker than its transcription capability, especially for `whisper-small`.
+- Mixed-language output (as seen in the ES→EN example above) is a known failure mode: the model partially reverts to the source language mid-sequence. This is more common with `whisper-small` and with languages that were less represented in Whisper's pretraining data.
+- Translation always outputs **English only** — Whisper's translate task is English-output only. There is no arbitrary source→target language pair support.
+- The `forced_decoder_ids` conflict warning printed at runtime is harmless: the checkpoint's baked-in `generation_config` sets `forced_decoder_ids` for transcription mode, but passing `task=translate` via `generate_kwargs` overrides it correctly.
+
+**To get higher-quality translation:** upgrade to `openai/whisper-large-v3` (change `MODEL_ID` in `train.py`) for better pretrained translation capability, or fine-tune explicitly in translation mode by setting `task="translate"` in `train.py` and providing paired audio + English reference transcripts (FLEURS includes these).
 
 ## Extending
 
