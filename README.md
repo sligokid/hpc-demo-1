@@ -1,5 +1,7 @@
 # SLICK+ HPC Demo — Multilingual Whisper Fine-Tuning for ASR
 
+**Goal: Turning videos into machine-readable knowledge**
+
 Fine-tunes `openai/whisper-small` on [Google FLEURS](https://huggingface.co/datasets/google/fleurs) across five languages simultaneously using a SLURM job array on HPC GPU infrastructure. Demonstrates how multilingual speech model training that would take weeks on standard infrastructure can be reduced to days.
 
 ## Languages
