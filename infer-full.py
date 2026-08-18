@@ -15,18 +15,17 @@ from transformers import pipeline
 SAMPLING_RATE = 16_000
 
 
-def transcribe(model_dir: str, audio_path: str, language: Optional[str] = None) -> str:
+def transcribe(model_dir: str, audio_path: str, language: Optional[str] = None, task: str = "transcribe") -> str:
     if torch.cuda.is_available():
-        device = "cuda"
+        device = 0  # pipeline expects int device index for CUDA
     elif torch.backends.mps.is_available():
         device = "mps"
     else:
-        device = "cpu"
+        device = -1  # CPU
 
-    generate_kwargs = {}
+    generate_kwargs = {"task": task}
     if language:
         generate_kwargs["language"] = language
-        generate_kwargs["task"] = "transcribe"
 
     audio, _ = librosa.load(audio_path, sr=SAMPLING_RATE, mono=True)
 
@@ -51,13 +50,18 @@ def main():
     parser.add_argument("--language", default=None,
                         help="Force decode language (e.g. 'spanish'). "
                              "Defaults to model's trained language.")
+    parser.add_argument("--task", default="transcribe",
+                        choices=["transcribe", "translate"],
+                        help="Task to perform: 'transcribe' (default) or 'translate' (outputs English).")
     args = parser.parse_args()
 
     print(f"Model : {args.model_dir}")
     print(f"Audio : {args.audio}")
-    print("Transcribing...")
-    result = transcribe(args.model_dir, args.audio, args.language)
-    print(f"\nTranscription:\n{result}")
+    label = "Translation" if args.task == "translate" else "Transcription"
+    verb = "Translating" if args.task == "translate" else "Transcribing"
+    print(f"{verb}...")
+    result = transcribe(args.model_dir, args.audio, args.language, args.task)
+    print(f"\n{label}:\n{result}")
 
 
 if __name__ == "__main__":
