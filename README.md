@@ -19,9 +19,9 @@ Fine-tunes `openai/whisper-small` on [Google FLEURS](https://huggingface.co/data
 Run directly in a virtualenv. PyTorch's MPS backend is used automatically; Docker cannot access it.
 
 ```bash
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ## Training <a name="training"></a>
@@ -93,6 +93,21 @@ Audio of any length is supported — the pipeline chunks into overlapping 30-sec
 python infer.py --model_dir checkpoints/es --audio path/to/audio.wav
 python infer.py --model_dir checkpoints/fr --audio path/to/audio.mp3 --language french
 ```
+
+### Translation mode
+
+Pass `--task translate` to produce an English transcript from non-English audio without retraining:
+
+```bash
+python infer.py --model_dir checkpoints/es --audio path/to/audio.wav --task translate
+```
+
+**Constraints:**
+- Translation always outputs **English**, regardless of source language — Whisper's translate task is English-output only.
+- The five fine-tuned checkpoints were trained with `task="transcribe"`. Translation uses Whisper's pretrained translation head, not fine-tuned translation weights. Quality will vary by language and is generally weaker than transcription.
+- `--language` continues to work alongside `--task translate` to force the source language when needed.
+
+**Future extension:** to improve translation quality, `train.py` can be fine-tuned in translation mode by changing `task="transcribe"` to `task="translate"` and providing paired audio + English reference translations (FLEURS includes these). A separate output directory (e.g. `checkpoints/es-translate`) would be needed to avoid overwriting transcription checkpoints.
 
 ### HPC — Singularity (AMD/ROCm)
 ```bash

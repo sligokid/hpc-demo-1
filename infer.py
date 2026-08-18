@@ -15,7 +15,7 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 SAMPLING_RATE = 16_000
 
 
-def transcribe(model_dir: str, audio_path: str, language: Optional[str] = None) -> str:
+def transcribe(model_dir: str, audio_path: str, language: Optional[str] = None, task: str = "transcribe") -> str:
     if torch.cuda.is_available():
         device = "cuda"
     elif torch.backends.mps.is_available():
@@ -34,8 +34,10 @@ def transcribe(model_dir: str, audio_path: str, language: Optional[str] = None) 
     forced_decoder_ids = None
     if language:
         forced_decoder_ids = processor.get_decoder_prompt_ids(
-            language=language, task="transcribe"
+            language=language, task=task
         )
+    elif task == "translate":
+        forced_decoder_ids = processor.get_decoder_prompt_ids(task="translate")
 
     with torch.no_grad():
         predicted_ids = model.generate(
@@ -55,13 +57,17 @@ def main():
     parser.add_argument("--language", default=None,
                         help="Force decode language (e.g. 'spanish'). "
                              "Defaults to model's trained language.")
+    parser.add_argument("--task", default="transcribe",
+                        choices=["transcribe", "translate"],
+                        help="Task to perform: 'transcribe' (default) or 'translate' (outputs English).")
     args = parser.parse_args()
 
     print(f"Model : {args.model_dir}")
     print(f"Audio : {args.audio}")
-    print("Transcribing...")
-    result = transcribe(args.model_dir, args.audio, args.language)
-    print(f"\nTranscription:\n{result}")
+    label = "Translation" if args.task == "translate" else "Transcription"
+    print(f"{label}ing...")
+    result = transcribe(args.model_dir, args.audio, args.language, args.task)
+    print(f"\n{label}:\n{result}")
 
 
 if __name__ == "__main__":
