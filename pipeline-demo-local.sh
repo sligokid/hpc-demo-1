@@ -1,0 +1,1 @@
+python infer.py --model_dir checkpoints/en  --audio sligo-triathlon-club-inviting-women-to-try-a-tri.mp3 | python analyze.py     --transcript - --model llama3.1:8b

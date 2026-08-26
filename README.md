@@ -153,12 +153,19 @@ Translation:
 
 `analyze.py` takes a transcript and calls an Ollama LLM to extract structured metadata (title, description, tags, goals, skills).
 
-### Local — native Ollama
+### Local — native Ollama on GPU 
 
+Serve llama
 ```bash
 ollama serve          # in a separate terminal, if not already running
-ollama pull llama3    # once
+ollama pull llama3.1:8b # once
 
+# OR instead 
+ollama run llama3.1:8b
+```
+
+Query llama
+```bash
 python analyze.py --transcript transcripts/my-video.txt
 ```
 
@@ -169,7 +176,7 @@ python infer.py --model_dir checkpoints/en --audio my-talk.mp3 | \
     python analyze.py --transcript -
 ```
 
-### Local — Docker Compose (no native Ollama install required)
+### Local — Docker Compose on CPU only (no native Ollama install required)
 
 ```bash
 # 1. Start the Ollama service
@@ -183,6 +190,9 @@ docker compose run --rm dev python analyze.py     --transcript results/infer-on-
 
 # 3-b. Run analyze.py against ollama runnning in a docker container
 python analyze.py     --transcript results/infer-on-gpu.sh.txt
+
+# 3-c Run analyze.py against ollama runnning locally
+python analyze.py     --transcript results/infer-on-gpu.sh.txt --model llama3.1:8b
 ```
 
 The `ollama_models` named volume persists model weights across restarts. Re-running step 2 after the model is cached is safe and fast.
