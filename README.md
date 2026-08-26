@@ -149,6 +149,65 @@ Translation:
  hello or hello who is speaking? from whom? speak Guillermo one moment I would like to talk to Guillermo she is not at home can I leave a message no está en casa puedo dejarle un recado sabe usted cuando regresa? yo le hablo por yo le hablo para atrás luego puede hablar más despacio se encuentra guillermo I speak back later. Can I speak more slowly? Is Guillermo here? I am busy. Can I speak later?
 ```
 
+## Metadata Generation
+
+`analyze.py` takes a transcript and calls an Ollama LLM to extract structured metadata (title, description, tags, goals, skills).
+
+### Local — native Ollama
+
+```bash
+ollama serve          # in a separate terminal, if not already running
+ollama pull llama3    # once
+
+python analyze.py --transcript transcripts/my-video.txt
+```
+
+Pipe from `infer.py` directly:
+
+```bash
+python infer.py --model_dir checkpoints/en --audio my-talk.mp3 | \
+    python analyze.py --transcript -
+```
+
+### Local — Docker Compose (no native Ollama install required)
+
+```bash
+# 1. Start the Ollama service
+docker compose up -d ollama
+
+# 2. Pull the model into the named volume (once)
+docker compose exec ollama ollama pull llama3
+
+# 3. Run analyze.py inside the dev container
+docker compose run --rm dev python analyze.py \
+    --transcript transcripts/my-video.txt \
+    --ollama-host ollama:11434
+```
+
+The `ollama_models` named volume persists model weights across restarts. Re-running step 2 after the model is cached is safe and fast.
+
+> **Note:** Docker Desktop on macOS cannot access Apple Metal (MPS). Ollama inside Docker uses CPU inference only. For faster results, use native Ollama (`ollama serve`) and point `analyze.py` at `localhost:11434` (the default).
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--transcript` | required | Path to transcript file, or `-` to read from stdin |
+| `--model` | `llama3` | Ollama model to use |
+| `--ollama-host` | `localhost:11434` | Ollama host to connect to |
+
+### Swap the model
+
+Any model pulled into the named volume can be used:
+
+```bash
+docker compose exec ollama ollama pull mistral
+docker compose run --rm dev python analyze.py \
+    --transcript transcripts/my-video.txt \
+    --ollama-host ollama:11434 \
+    --model mistral
+```
+
 ## Pipeline Overview
 
 ```

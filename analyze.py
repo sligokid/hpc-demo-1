@@ -4,9 +4,6 @@ import sys
 import requests
 
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-
-
 def build_prompt(transcript):
     return (
         "You are a learning content analyst. "
@@ -22,14 +19,15 @@ def build_prompt(transcript):
     )
 
 
-def call_ollama(prompt, model):
+def call_ollama(prompt, model, ollama_host):
+    url = f"http://{ollama_host}/api/generate"
     try:
         response = requests.post(
-            OLLAMA_URL,
+            url,
             json={"model": model, "prompt": prompt, "format": "json", "stream": False},
         )
     except requests.exceptions.ConnectionError:
-        print("Error: could not connect to Ollama. Is it running? Try: ollama serve", file=sys.stderr)
+        print(f"Error: could not connect to Ollama at {ollama_host}. Is it running?", file=sys.stderr)
         sys.exit(1)
 
     if not response.ok:
@@ -39,13 +37,13 @@ def call_ollama(prompt, model):
     return response.json()["response"]
 
 
-def analyze(transcript, model):
+def analyze(transcript, model, ollama_host="localhost:11434"):
     if not transcript.strip():
         print("Error: transcript is empty.", file=sys.stderr)
         sys.exit(1)
 
     prompt = build_prompt(transcript)
-    raw = call_ollama(prompt, model)
+    raw = call_ollama(prompt, model, ollama_host)
 
     try:
         return json.loads(raw)
@@ -69,6 +67,11 @@ def main():
         default="llama3",
         help="Ollama model to use (default: llama3).",
     )
+    parser.add_argument(
+        "--ollama-host",
+        default="localhost:11434",
+        help="Ollama host to connect to (default: localhost:11434).",
+    )
     args = parser.parse_args()
 
     if args.transcript == "-":
@@ -77,7 +80,7 @@ def main():
         with open(args.transcript) as f:
             transcript = f.read()
 
-    metadata = analyze(transcript, args.model)
+    metadata = analyze(transcript, args.model, args.ollama_host)
     print(json.dumps(metadata, indent=2))
 
 

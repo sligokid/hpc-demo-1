@@ -95,7 +95,39 @@ def test_connection_error_exits_1(capsys, mocker):
         analyze.analyze(TRANSCRIPT, "llama3")
     assert exc.value.code == 1
     err = capsys.readouterr().err
-    assert "ollama serve" in err
+    assert "localhost:11434" in err
+
+
+# --- --ollama-host flag ---
+
+def test_ollama_host_flag_constructs_correct_url(mocker):
+    mock = mocker.patch("requests.post")
+    mock.return_value.ok = True
+    mock.return_value.json.return_value = {"response": VALID_RESPONSE}
+
+    analyze.analyze(TRANSCRIPT, "llama3", ollama_host="ollama:11434")
+
+    url = mock.call_args[0][0]
+    assert url == "http://ollama:11434/api/generate"
+
+
+def test_connection_error_includes_host(capsys, mocker):
+    mocker.patch("requests.post", side_effect=requests.exceptions.ConnectionError)
+    with pytest.raises(SystemExit) as exc:
+        analyze.analyze(TRANSCRIPT, "llama3", ollama_host="ollama:11434")
+    assert exc.value.code == 1
+    assert "ollama:11434" in capsys.readouterr().err
+
+
+def test_default_host_url(mocker):
+    mock = mocker.patch("requests.post")
+    mock.return_value.ok = True
+    mock.return_value.json.return_value = {"response": VALID_RESPONSE}
+
+    analyze.analyze(TRANSCRIPT, "llama3")
+
+    url = mock.call_args[0][0]
+    assert url == "http://localhost:11434/api/generate"
 
 
 def test_http_error_exits_1(capsys, mocker):
