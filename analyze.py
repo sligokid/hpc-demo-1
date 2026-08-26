@@ -23,18 +23,35 @@ def build_prompt(transcript):
 
 
 def call_ollama(prompt, model):
-    response = requests.post(
-        OLLAMA_URL,
-        json={"model": model, "prompt": prompt, "format": "json", "stream": False},
-    )
-    response.raise_for_status()
+    try:
+        response = requests.post(
+            OLLAMA_URL,
+            json={"model": model, "prompt": prompt, "format": "json", "stream": False},
+        )
+    except requests.exceptions.ConnectionError:
+        print("Error: could not connect to Ollama. Is it running? Try: ollama serve", file=sys.stderr)
+        sys.exit(1)
+
+    if not response.ok:
+        print(f"Error: Ollama returned {response.status_code}: {response.text}", file=sys.stderr)
+        sys.exit(1)
+
     return response.json()["response"]
 
 
 def analyze(transcript, model):
+    if not transcript.strip():
+        print("Error: transcript is empty.", file=sys.stderr)
+        sys.exit(1)
+
     prompt = build_prompt(transcript)
     raw = call_ollama(prompt, model)
-    return json.loads(raw)
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        print(f"Error: model returned invalid JSON:\n{raw}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
