@@ -178,10 +178,11 @@ docker compose up -d ollama
 # 2. Pull the model into the named volume (once)
 docker compose exec ollama ollama pull llama3
 
-# 3. Run analyze.py inside the dev container
-docker compose run --rm dev python analyze.py \
-    --transcript transcripts/my-video.txt \
-    --ollama-host ollama:11434
+# 3-a. Run analyze.py inside the dev container
+docker compose run --rm dev python analyze.py     --transcript results/infer-on-gpu.sh.txt     --ollama-host ollama:11434
+
+# 3-b. Run analyze.py against ollama runnning in a docker container
+python analyze.py     --transcript results/infer-on-gpu.sh.txt
 ```
 
 The `ollama_models` named volume persists model weights across restarts. Re-running step 2 after the model is cached is safe and fast.
