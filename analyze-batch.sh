@@ -6,16 +6,15 @@
 #   2. ollama-pull.sh has been run to cache the model
 #
 # Submit:
-#   sbatch analyze-batch.sh <transcript-folder>
+#   N=$(find transcripts/ -name "*.txt" | wc -l)
+#   sbatch --array=0-$((N-1)) analyze-batch.sh <transcript-folder>
 #
 # Chain with the Ollama service job:
 #   JID=$(sbatch --parsable ollama-serve.sh)
-#   sbatch --dependency=after:$JID analyze-batch.sh <transcript-folder>
-#
-# Array limit: tasks beyond the number of .txt files in the folder exit immediately.
+#   N=$(find transcripts/ -name "*.txt" | wc -l)
+#   sbatch --dependency=after:$JID --array=0-$((N-1)) analyze-batch.sh <transcript-folder>
 
 #SBATCH --job-name=analyze-batch
-#SBATCH --array=0-999
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
@@ -46,7 +45,7 @@ fi
 OLLAMA_HOST=$(cat "$ENDPOINT_FILE")
 
 # Map array task ID to a transcript file
-mapfile -t TRANSCRIPTS < <(ls "$TRANSCRIPT_DIR"/*.txt 2>/dev/null | sort)
+mapfile -t TRANSCRIPTS < <(find "$TRANSCRIPT_DIR" -maxdepth 1 -name "*.txt" | sort)
 
 if [ ${#TRANSCRIPTS[@]} -eq 0 ]; then
     echo "Error: no .txt files found in $TRANSCRIPT_DIR/" >&2
