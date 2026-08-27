@@ -13,8 +13,10 @@ TRANSCRIPT=${1:?Usage: analyze-on-gpu.sh <transcript-file>}
 
 SCRATCH=/scratch/project_465003209/mcgowank
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
-WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
-MODEL=${MODEL:-llama3.1:8b}
+#WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
+WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/hpc-demo-1/whisper-hpc.sif}
+#MODEL=${MODEL:-llama3.1:8b}
+MODEL=${MODEL:-llama3}
 
 if [ ! -f "$ENDPOINT_FILE" ]; then
     echo "Error: endpoint file not found at $ENDPOINT_FILE" >&2
