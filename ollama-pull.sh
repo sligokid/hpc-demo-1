@@ -7,7 +7,10 @@
 #   singularity pull ollama.sif docker://ollama/ollama:rocm
 #   mv ollama.sif /scratch/project_465003209/mcgowank/
 #
-# Step 2 — pull model weights into scratch (this script):
+# Step 2 — start the Ollama service (must be running before this script):
+#   sbatch ollama-serve.sh
+#
+# Step 3 — pull model weights into scratch (this script):
 #   ./ollama-pull.sh [model]
 #
 # Examples:
@@ -29,6 +32,17 @@ if [ ! -f "$OLLAMA_SIF" ]; then
     exit 1
 fi
 
+ENDPOINT_FILE=$SCRATCH/ollama.endpoint
+
+if [ ! -f "$ENDPOINT_FILE" ]; then
+    echo "Error: endpoint file not found at $ENDPOINT_FILE" >&2
+    echo "Start the Ollama service first: sbatch ollama-serve.sh" >&2
+    exit 1
+fi
+
+OLLAMA_HOST=$(cat "$ENDPOINT_FILE")
+echo "Using Ollama service at $OLLAMA_HOST"
+
 mkdir -p "$OLLAMA_MODELS_DIR"
 
 echo "Pulling model '$MODEL' into $OLLAMA_MODELS_DIR ..."
@@ -36,6 +50,7 @@ echo "Pulling model '$MODEL' into $OLLAMA_MODELS_DIR ..."
 singularity exec \
     --bind "$OLLAMA_MODELS_DIR:/ollama-models" \
     --env OLLAMA_MODELS=/ollama-models \
+    --env OLLAMA_HOST="$OLLAMA_HOST" \
     "$OLLAMA_SIF" \
     ollama pull "$MODEL"
 
@@ -44,17 +59,15 @@ echo "Verifying model is present in ollama list ..."
 LIST=$(singularity exec \
     --bind "$OLLAMA_MODELS_DIR:/ollama-models" \
     --env OLLAMA_MODELS=/ollama-models \
+    --env OLLAMA_HOST="$OLLAMA_HOST" \
     "$OLLAMA_SIF" \
     ollama list)
 
-# Strip optional tag for matching (e.g. "llama3:8b-q4" → "llama3")
 MODEL_BASE=${MODEL%%:*}
-
 if echo "$LIST" | grep -q "^${MODEL_BASE}"; then
     echo "Model '$MODEL' is ready in $OLLAMA_MODELS_DIR."
-    exit 0
 else
-    echo "Error: model '$MODEL' was not found in 'ollama list' after pull." >&2
+    echo "Error: model '$MODEL' was not found in ollama list after pull." >&2
     echo "Output was:" >&2
     echo "$LIST" >&2
     exit 1
