@@ -1,9 +1,13 @@
 #!/bin/bash
-# One-time model pull into scratch storage for air-gapped HPC operation.
+# One-time setup for air-gapped HPC operation.
 # Run this once on a login node or data-transfer node with internet access
 # before submitting any analysis jobs.
 #
-# Usage:
+# Step 1 — build the Singularity image (once per cluster):
+#   singularity pull ollama.sif docker://ollama/ollama:rocm
+#   mv ollama.sif /scratch/project_465003209/mcgowank/
+#
+# Step 2 — pull model weights into scratch (this script):
 #   ./ollama-pull.sh [model]
 #
 # Examples:
@@ -18,6 +22,12 @@ MODEL=${1:-llama3}
 SCRATCH=/scratch/project_465003209/mcgowank
 OLLAMA_SIF=${OLLAMA_SIF:-$SCRATCH/ollama.sif}
 OLLAMA_MODELS_DIR=$SCRATCH/ollama-models
+
+if [ ! -f "$OLLAMA_SIF" ]; then
+    echo "Error: ollama.sif not found at $OLLAMA_SIF" >&2
+    echo "Build it first: singularity pull ollama.sif docker://ollama/ollama:rocm" >&2
+    exit 1
+fi
 
 mkdir -p "$OLLAMA_MODELS_DIR"
 
