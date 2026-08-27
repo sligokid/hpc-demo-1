@@ -31,6 +31,7 @@ MODEL=${MODEL:-llama3.1:8b}
 TRANSCRIPT_DIR=${1:?Usage: sbatch analyze-batch.sh <transcript-folder>}
 SCRATCH=/scratch/project_465003209/mcgowank
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
+WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
 # ---------------------
 
 mkdir -p logs metadata
@@ -69,12 +70,13 @@ echo "Endpoint  : $OLLAMA_HOST"
 echo "Model     : $MODEL"
 echo "============================================"
 
-source "$PWD/venv/bin/activate"
-
-python analyze.py \
-    --transcript "$TRANSCRIPT" \
-    --model "$MODEL" \
-    --ollama-host "$OLLAMA_HOST" \
+singularity exec \
+    --bind "$PWD:/workspace" \
+    "$WHISPER_SIF" \
+    python /workspace/analyze.py \
+        --transcript "/workspace/$TRANSCRIPT" \
+        --model "$MODEL" \
+        --ollama-host "$OLLAMA_HOST" \
     > "$OUTPUT"
 
 echo "Written: $OUTPUT"
