@@ -26,13 +26,13 @@ echo "============================================"
 #SIF=${SIF:-$HOME/whisper-hpc.sif}
 SIF=/scratch/project_465003209/mcgowank/hpc-demo-1/whisper-hpc.sif
 
-# Resolve project root regardless of where sbatch is invoked from
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# SLURM_SUBMIT_DIR is the directory sbatch was run from — go up two levels to project root
+PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
 
 # Shared HuggingFace dataset cache — avoids re-downloading FLEURS across all 5 jobs
 #HF_CACHE=${HF_CACHE:-/scratch/$USER/hf_cache}
 HF_CACHE=${HF_CACHE:-/scratch/project_465003209/mcgowank/hf_cache}
-mkdir -p "$HF_CACHE" logs "checkpoints/$LANG"
+mkdir -p "$HF_CACHE" "$PROJECT_ROOT/logs" "$PROJECT_ROOT/checkpoints/$LANG"
 
 # rocm/6.1 host drivers must be visible for --rocm to work; load if your cluster uses modules
 # module load rocm/6.1
