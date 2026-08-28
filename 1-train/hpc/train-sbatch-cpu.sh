@@ -1,4 +1,24 @@
 #!/bin/bash
+# SLURM array job: Fine-tune openai/whisper-small on Google FLEURS across 5 languages (CPU fallback).
+#
+# Languages (array indices 0-4):
+#   0: en (English)
+#   1: es (Spanish)
+#   2: fr (French)
+#   3: zh-CN (Mandarin)
+#   4: ar (Arabic)
+#
+# Submit Examples:
+#   mkdir -p logs
+#   sbatch 1-train/hpc/train-sbatch-cpu.sh              # Submit all 5 languages in parallel
+#   sbatch --array=0 1-train/hpc/train-sbatch-cpu.sh    # Submit English only (task 0)
+#   sbatch --array=1 1-train/hpc/train-sbatch-cpu.sh    # Submit Spanish only (task 1)
+#   sbatch --array=0,1 1-train/hpc/train-sbatch-cpu.sh  # Submit English and Spanish
+#
+# Monitor:
+#   squeue -u $USER
+#   tail -f logs/<jobid>_<arrayindex>.out
+#
 #SBATCH --job-name=whisper-finetune
 #SBATCH --array=0-4                  # one task per language
 #SBATCH --gres=gpu:1                 # 1 GPU per task
