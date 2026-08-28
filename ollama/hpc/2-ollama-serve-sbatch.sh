@@ -64,12 +64,12 @@ if ss -tlnp 2>/dev/null | grep -q ":${OLLAMA_PORT} "; then
 fi
 
 # Start Ollama server inside Singularity in the background
-OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT} \
 singularity run \
     --rocm \
     --bind "$OLLAMA_MODELS_DIR:/ollama-models" \
     --env OLLAMA_MODELS=/ollama-models \
     --env OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT} \
+    --env LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib \
     "$OLLAMA_SIF" serve &
 OLLAMA_PID=$!
 
