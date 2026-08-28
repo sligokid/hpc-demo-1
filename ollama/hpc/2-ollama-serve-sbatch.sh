@@ -33,7 +33,7 @@ set -euo pipefail
 WALL_TIME=08:00:00                    # must match #SBATCH --time above
 OLLAMA_PORT=11434
 HEALTH_TIMEOUT=120                    # seconds to wait for Ollama to be ready
-SCRATCH=/scratch/project_465003209/mcgowank
+SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
 OLLAMA_SIF=${OLLAMA_SIF:-$SCRATCH/ollama.sif}
 OLLAMA_MODELS_DIR=$SCRATCH/ollama-models
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint

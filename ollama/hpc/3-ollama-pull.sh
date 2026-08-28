@@ -22,7 +22,7 @@ set -euo pipefail
 
 MODEL=${1:-llama3}
 
-SCRATCH=/scratch/project_465003209/mcgowank
+SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
 OLLAMA_SIF=${OLLAMA_SIF:-$SCRATCH/ollama.sif}
 OLLAMA_MODELS_DIR=$SCRATCH/ollama-models
 
