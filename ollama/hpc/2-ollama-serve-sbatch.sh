@@ -63,14 +63,19 @@ if ss -tlnp 2>/dev/null | grep -q ":${OLLAMA_PORT} "; then
     exit 1
 fi
 
-# Start Ollama server inside Singularity in the background
-singularity run \
+# Start Ollama server inside Singularity in the background.
+# bash -c ensures LD_LIBRARY_PATH is exported before ollama starts,
+# matching the pattern in submit-gpu.sh.
+singularity exec \
     --rocm \
     --bind "$OLLAMA_MODELS_DIR:/ollama-models" \
     --env OLLAMA_MODELS=/ollama-models \
     --env OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT} \
-    --env LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib \
-    "$OLLAMA_SIF" serve &
+    "$OLLAMA_SIF" \
+    bash -c "
+        export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
+        ollama serve
+    " &
 OLLAMA_PID=$!
 
 echo "Ollama PID: $OLLAMA_PID"
