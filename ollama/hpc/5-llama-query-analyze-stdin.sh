@@ -2,8 +2,7 @@
 # Pipe a transcript into analyze.py via the running Ollama HPC service.
 #
 # Usage:
-#   cat results/infer-on-gpu.sh.txt | ./5-llama-query-analyze-stdin.sh
-#   ./5-llama-query-analyze-stdin.sh < results/infer-on-gpu.sh.txt
+#   ./5-llama-query-analyze-stdin.sh
 
 REPO_ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 SCRATCH=/scratch/project_465003209/mcgowank
@@ -23,6 +22,6 @@ singularity exec \
     --bind "$REPO_ROOT:/workspace" \
     "$WHISPER_SIF" \
     python /workspace/analyze.py \
-        --transcript - \
+        --transcript ../results/infer-on-gpu.sh.txt \
         --model "$MODEL" \
         --ollama-host "$OLLAMA_HOST"
