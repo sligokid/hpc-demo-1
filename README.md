@@ -27,21 +27,8 @@ pip3 install -r requirements.txt
 ```
 
 ## Training <a name="training"></a>
-Checkpoints are saved per epoch to `checkpoints/<lang>/`. The best checkpoint (lowest WER) is restored automatically at the end of training.
 
-### Smoke test — single language, small sample — local dev
-
-GPU enabled if present but not required
-
-```bash
-python train.py --language es --output_dir ./checkpoints/es --max_train_samples 200 --epochs 1 --batch_size 2
-```
-
-### Linux / CI — CPU-only Docker (GPU not supported on Mac)
-
-```bash
-docker compose run dev python train.py --language es --output_dir ./checkpoints/es --max_train_samples 200 --epochs 1
-```
+See [`1-train/README.md`](1-train/README.md) for full training instructions, smoke tests, HPC submission, and how to extend the pipeline.
 
 ## Build via Docker <a name="build"></a>
 **To build and push a new image** (run locally with Docker installed):
@@ -74,20 +61,6 @@ $ export SINGULARITY_TMPDIR=/tmp/$USER
 $ export SINGULARITY_CACHEDIR=/tmp/$USER
 singularity pull whisper-hpc.sif docker://sligokid/whisper-hpc:latest
 ```
-
-**Full HPC run — all 5 languages in parallel:**
-```bash
-mkdir -p logs
-sbatch submit.sh
-```
-
-Each language runs as an independent SLURM job (one GPU each). Monitor progress:
-
-```bash
-squeue -u $USER
-tail -f logs/<jobid>_<arrayindex>.out
-```
-
 
 ## Inference
 Audio of any length is supported — the pipeline chunks into overlapping 30-second windows automatically.
@@ -309,7 +282,7 @@ $PWD/
 ┌─────────────────────────────────────────────────────────┐
 │  TRAINING  (HPC — 5 parallel SLURM jobs)                │
 │                                                         │
-│  Google FLEURS  ──►  train.py  ──►  checkpoints/<lang>  │
+│  Google FLEURS  ──►  1-train/train.py  ──►  checkpoints/<lang>  │
 │  (en, es, fr,         x5 GPUs                           │
 │   zh-CN, ar)          in parallel                       │
 └─────────────────────────────────────────────────────────┘
@@ -334,15 +307,7 @@ $PWD/
 
 ## How it works
 
-Whisper is an encoder-decoder transformer pretrained by OpenAI on 680,000 hours of multilingual audio. Fine-tuning adapts it to the acoustic style of a specific domain (in this case, FLEURS read speech) without training from scratch.
-
-Each training job:
-1. Converts audio to 80-channel log-mel spectrograms
-2. Tokenizes transcriptions into Whisper's BPE vocabulary
-3. Fine-tunes all model weights via cross-entropy loss with teacher forcing
-4. Evaluates Word Error Rate (WER) on the validation set each epoch
-
-On HPC, all five jobs run concurrently — wall-clock time equals one language, not five.
+See [`1-train/README.md`](1-train/README.md) for details on the training pipeline.
 
 ### How translation works — and why it has limits
 
@@ -357,13 +322,7 @@ The five checkpoints in this project were trained exclusively with `task=transcr
 - Translation always outputs **English only** — Whisper's translate task is English-output only. There is no arbitrary source→target language pair support.
 - The `forced_decoder_ids` conflict warning printed at runtime is harmless: the checkpoint's baked-in `generation_config` sets `forced_decoder_ids` for transcription mode, but passing `task=translate` via `generate_kwargs` overrides it correctly.
 
-**To get higher-quality translation:** upgrade to `openai/whisper-large-v3` (change `MODEL_ID` in `train.py`) for better pretrained translation capability, or fine-tune explicitly in translation mode by setting `task="translate"` in `train.py` and providing paired audio + English reference transcripts (FLEURS includes these).
-
-## Extending
-
-**Add a language:** add entries to `LANGUAGE_CODES` and `FLEURS_CODES` in `train.py`, add the code to `LANGUAGES` in `submit.sh`, and expand `--array` to match.
-
-**Use client audio data:** replace the `load_fleurs()` call in `train.py` with a custom `datasets.Dataset` — the rest of the pipeline is data-source agnostic.
+**To get higher-quality translation:** upgrade to `openai/whisper-large-v3` (change `MODEL_ID` in `1-train/train.py`) for better pretrained translation capability, or fine-tune explicitly in translation mode by setting `task="translate"` in `train.py` and providing paired audio + English reference transcripts (FLEURS includes these).
 
 
 ## References:

@@ -33,6 +33,7 @@ mkdir -p "$HF_CACHE" logs "checkpoints/$LANG"
 
 # rocm/6.1 host drivers must be visible for --rocm to work; load if your cluster uses modules
 # module load rocm/6.1
+
 singularity exec \
     --rocm \
     --bind "$PWD:/workspace" \
@@ -41,11 +42,12 @@ singularity exec \
     "$SIF" \
     bash -c "
         export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
-        python /workspace/train.py \
+        export MIOPEN_USER_DB_PATH=/workspace/.miopen_cache
+        mkdir -p /workspace/.miopen_cache
+        python /workspace/1-train/train.py \
             --language '$LANG' \
             --output_dir '/workspace/checkpoints/$LANG' \
             --epochs 3 \
-            --batch_size 16 \
+            --batch_size 64 \
             --learning_rate 1e-5
     "
-
