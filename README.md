@@ -219,6 +219,90 @@ docker compose run --rm dev python analyze.py \
     --model mistral
 ```
 
+### HPC — Ollama on GPU node (AMD/ROCm)
+
+Runs `analyze.py` at scale: a persistent Ollama service occupies one GPU node and serves
+the whole batch, eliminating per-task model-load overhead (~30–60 s each).
+
+#### Prerequisites — build `ollama.sif` once
+
+On a login node or data-transfer node with internet access:
+
+```bash
+# Set cache dirs to avoid leaving temp files on the login node
+mkdir -p /tmp/$USER
+export SINGULARITY_TMPDIR=/tmp/$USER
+export SINGULARITY_CACHEDIR=/tmp/$USER
+
+singularity pull ollama.sif docker://ollama/ollama:rocm
+mv ollama.sif /scratch/project_465003209/$USER/
+```
+
+#### Step 1 — pull model weights into scratch (once, before air-gapped compute)
+
+Run on any node with internet access while the Ollama service is already running:
+
+```bash
+./ollama/hpc/3-ollama-pull.sh              # pulls llama3 (default)
+./ollama/hpc/3-ollama-pull.sh llama3:8b-q4 # or a quantised variant
+```
+
+The script verifies the model is present in `ollama list` before exiting.
+
+#### Step 2 — start the persistent Ollama service
+
+```bash
+mkdir -p logs
+SVC=$(sbatch --parsable ollama/hpc/2-ollama-serve-sbatch.sh)
+echo "Service job: $SVC"
+```
+
+The job writes `hostname:11434` to the endpoint discovery file in scratch once the
+HTTP health check passes. It removes the file on exit (wall-time expiry or `scancel`).
+
+#### Step 3 — submit the batch analysis array
+
+```bash
+N=$(find transcripts/ -name "*.txt" | wc -l)
+sbatch --dependency=after:$SVC --array=0-$((N-1)) analyze-batch.sh transcripts/
+```
+
+Each task reads the endpoint file, calls `analyze.py --transcript <file> --ollama-host
+<endpoint>`, and writes JSON to `metadata/<basename>.json`.
+
+#### Interactive single-transcript (srun wrapper)
+
+```bash
+./analyze-on-gpu.sh transcripts/foo.txt
+```
+
+#### Unattended overnight pipeline — chain all steps in one command
+
+```bash
+# 1. Start the Ollama service and capture the job ID
+SVC=$(sbatch --parsable ollama/hpc/2-ollama-serve-sbatch.sh)
+
+# 2. Submit batch analysis — starts only after the service job is allocated
+N=$(find transcripts/ -name "*.txt" | wc -l)
+sbatch --dependency=after:$SVC --array=0-$((N-1)) analyze-batch.sh transcripts/
+
+echo "Service job $SVC — analysis array queued behind it"
+```
+
+#### Directory layout
+
+```
+/scratch/project_465003209/<user>/
+    ollama.sif          # Ollama Singularity image (built once)
+    ollama-models/      # GGUF weight cache (written by ollama-pull.sh)
+    ollama.endpoint     # hostname:port — created on service start, removed on exit
+
+$PWD/
+    transcripts/        # input:  one .txt per video (from infer.py)
+    metadata/           # output: one .json per transcript (from analyze.py)
+    logs/               # SLURM stdout/stderr  (%A_%a.out convention)
+```
+
 ## Pipeline Overview
 
 ```
