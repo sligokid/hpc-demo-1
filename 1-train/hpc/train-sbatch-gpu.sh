@@ -24,7 +24,10 @@ echo "============================================"
 
 # Path to the Singularity image (pull once with: singularity pull whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest)
 #SIF=${SIF:-$HOME/whisper-hpc.sif}
-SIF=/scratch/project_465003209/mcgowank/hpc-demo-1/whisper-hpc.sif 
+SIF=/scratch/project_465003209/mcgowank/hpc-demo-1/whisper-hpc.sif
+
+# Resolve project root regardless of where sbatch is invoked from
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Shared HuggingFace dataset cache — avoids re-downloading FLEURS across all 5 jobs
 #HF_CACHE=${HF_CACHE:-/scratch/$USER/hf_cache}
@@ -35,7 +38,7 @@ mkdir -p "$HF_CACHE" logs "checkpoints/$LANG"
 # module load rocm/6.1
 singularity exec \
     --rocm \
-    --bind "$PWD:/workspace" \
+    --bind "$PROJECT_ROOT:/workspace" \
     --bind "$HF_CACHE:/hf_cache" \
     --env HF_HOME=/hf_cache \
     "$SIF" \
