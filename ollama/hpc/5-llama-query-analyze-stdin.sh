@@ -5,6 +5,7 @@
 #   cat results/infer-on-gpu.sh.txt | ./5-llama-query-analyze-stdin.sh
 #   ./5-llama-query-analyze-stdin.sh < results/infer-on-gpu.sh.txt
 
+REPO_ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 SCRATCH=/scratch/project_465003209/mcgowank
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/hpc-demo-1/whisper-hpc.sif}
@@ -19,7 +20,7 @@ fi
 OLLAMA_HOST=$(cat "$ENDPOINT_FILE")
 
 singularity exec \
-    --bind "$PWD:/workspace" \
+    --bind "$REPO_ROOT:/workspace" \
     "$WHISPER_SIF" \
     python /workspace/analyze.py \
         --transcript - \
