@@ -16,7 +16,7 @@ Fine-tunes `openai/whisper-small` on [Google FLEURS](https://huggingface.co/data
 
 ## Setup
 
-### Mac (Apple Silicon) — local dev
+### Linux / Mac (Apple Silicon) — local dev
 
 Run directly in a virtualenv. PyTorch's MPS backend is used automatically; Docker cannot access it.
 
@@ -26,11 +26,7 @@ source venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
-## Training <a name="training"></a>
-
-See [`1-train/README.md`](1-train/README.md) for full training instructions, smoke tests, HPC submission, and how to extend the pipeline.
-
-## Build via Docker <a name="build"></a>
+### Docker Build <a name="build"></a> — local dev
 **To build and push a new image** (run locally with Docker installed):
 
 ```bash
@@ -43,7 +39,7 @@ docker push sligokid/hpc-demo-1:latest
 docker buildx build --platform linux/amd64 -t sligokid/whisper-hpc:latest --push .
 ```
 
-### HPC — Singularity conversion from Docker image (AMD/ROCm)
+### Singularity Build from Docker image (AMD/ROCm) - HPC
 
 Pull the docker image once on the login node 
 
@@ -61,6 +57,9 @@ $ export SINGULARITY_TMPDIR=/tmp/$USER
 $ export SINGULARITY_CACHEDIR=/tmp/$USER
 singularity pull whisper-hpc.sif docker://sligokid/whisper-hpc:latest
 ```
+## Training <a name="training"></a>
+
+See [`1-train/README.md`](1-train/README.md) for full training instructions, smoke tests, HPC submission, and how to extend the pipeline.
 
 ## Inference
 Audio of any length is supported — the pipeline chunks into overlapping 30-second windows automatically.
