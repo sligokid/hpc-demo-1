@@ -41,7 +41,7 @@ for dir in "${SEARCH_DIRS[@]}"; do
     for f in "$dir"/*.{mp3,mp4,wav,flac,m4a,ogg}; do
         [ -f "$f" ] || continue
         [ -f "$f.done" ] && continue
-        echo "$PWD/$f"
+        echo "$f"  # relative to project root
     done
 done > "$MANIFEST"
 

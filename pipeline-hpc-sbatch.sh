@@ -45,8 +45,8 @@ if [ "$SLURM_ARRAY_TASK_ID" -ge "${#FILES[@]}" ]; then
 fi
 
 AUDIO_FILE=${FILES[$SLURM_ARRAY_TASK_ID]}
-# Path inside the container
-AUDIO_CONTAINER="/workspace/${AUDIO_FILE#${PROJECT_ROOT}/}"
+# Manifest contains paths relative to project root — map straight into /workspace
+AUDIO_CONTAINER="/workspace/$AUDIO_FILE"
 
 echo "============================================"
 echo "Job       : $SLURM_JOB_ID  Array task: $SLURM_ARRAY_TASK_ID"
