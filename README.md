@@ -62,64 +62,8 @@ singularity pull whisper-hpc.sif docker://sligokid/whisper-hpc:latest
 See [`1-train/README.md`](1-train/README.md) for full training instructions, smoke tests, HPC submission, and how to extend the pipeline.
 
 ## Inference
-Audio of any length is supported — the pipeline chunks into overlapping 30-second windows automatically.
-```bash
-python infer.py --model_dir checkpoints/es --audio path/to/audio.wav
-python infer.py --model_dir checkpoints/fr --audio path/to/audio.mp3 --language french
-```
 
-### Translation mode
-
-Pass `--task translate` to produce an English transcript from non-English audio without retraining:
-
-```bash
-python infer.py --model_dir checkpoints/es --audio path/to/audio.wav --task translate
-```
-
-**Constraints:**
-- Translation always outputs **English**, regardless of source language — Whisper's translate task is English-output only.
-- The five fine-tuned checkpoints were trained with `task="transcribe"`. Translation uses Whisper's pretrained translation head, not fine-tuned translation weights. Quality will vary by language and is generally weaker than transcription.
-- `--language` continues to work alongside `--task translate` to force the source language when needed.
-
-**Future extension:** to improve translation quality, `train.py` can be fine-tuned in translation mode by changing `task="transcribe"` to `task="translate"` and providing paired audio + English reference translations (FLEURS includes these). A separate output directory (e.g. `checkpoints/es-translate`) would be needed to avoid overwriting transcription checkpoints.
-
-### HPC — Singularity (AMD/ROCm)
-```bash
-./infer-on-gpu.sh
-```
-### Transcription Example
-```
-mcgowank@uan18:~/scratch/mcgowank/hpc-demo-1> bash infer-on-gpu.sh
-srun: job 21352183 queued and waiting for resources
-srun: job 21352183 has been allocated resources
-/opt/conda/envs/py_3.10/lib/python3.10/site-packages/transformers/models/whisper/generation_whisper.py:509: FutureWarning: The input name `inputs` is deprecated. Please make sure to use `input_features` instead.
-  warnings.warn(
-You have passed task=transcribe, but also have set `forced_decoder_ids` to [[1, 50259], [2, 50359], [3, 50363]] which creates a conflict. `forced_decoder_ids` will be ignored in favor of task=transcribe.
-The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
-Model : /workspace/checkpoints/en/
-Audio : /workspace/sligo-triathlon-club-inviting-women-to-try-a-tri.mp3
-Transcribing...
-
-Transcription:
- we're going to talk triathlon right now on oceanfm sport because slago triathlon club are getting ready with their 2026 edition of the women's tria tri initiative and this is for female listeners if you've never tried a triathlon before this could be the time for you a 250 meter swim a 10 kilometer cycle and a 3km run we had the slagotriathland club in with us earlier this year for the men's triadri and now it's the turn of the women and in studio with me rosy dignam who's the women's officer for slagotriathland club and kirin maghann who is secretary of slagotri triathlon club folks thanks for coming in and rosa you were ideally placed to talk about this try a try initiative because you were one of the triers a couple of years ago yes...
- ```
-
-### Translation ES -> En Example
-```
-mcgowank@uan18:~/scratch/mcgowank/hpc-demo-1> bash infer-translate-on-gpu.sh
-srun: job 21352472 queued and waiting for resources
-srun: job 21352472 has been allocated resources
-/opt/conda/envs/py_3.10/lib/python3.10/site-packages/transformers/models/whisper/generation_whisper.py:509: FutureWarning: The input name `inputs` is deprecated. Please make sure to use `input_features` instead.
-  warnings.warn(
-You have passed task=translate, but also have set `forced_decoder_ids` to [[1, 50259], [2, 50359], [3, 50363]] which creates a conflict. `forced_decoder_ids` will be ignored in favor of task=translate.
-The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
-Model : /workspace/checkpoints/es/
-Audio : /workspace/spanish-telephone-phrases.mp3
-Translating...
-
-Translation:
- hello or hello who is speaking? from whom? speak Guillermo one moment I would like to talk to Guillermo she is not at home can I leave a message no está en casa puedo dejarle un recado sabe usted cuando regresa? yo le hablo por yo le hablo para atrás luego puede hablar más despacio se encuentra guillermo I speak back later. Can I speak more slowly? Is Guillermo here? I am busy. Can I speak later?
-```
+See [`2-inference/README.md`](2-inference/README.md) for full inference instructions, translation mode, HPC scripts, and example output.
 
 ## Metadata Generation
 
@@ -144,7 +88,7 @@ python analyze.py --transcript transcripts/my-video.txt
 Pipe from `infer.py` directly:
 
 ```bash
-python infer.py --model_dir checkpoints/en --audio my-talk.mp3 | \
+python 2-inference/infer.py --model_dir checkpoints/en --audio my-talk.mp3 | \
     python analyze.py --transcript -
 ```
 
@@ -290,7 +234,7 @@ $PWD/
 ┌─────────────────────────────────────────────────────────┐
 │  TRANSCRIPTION  (local or HPC)                          │
 │                                                         │
-│  audio file  ──►  infer.py  ──►  transcript (text)      │
+│  audio file  ──►  2-inference/infer.py  ──►  transcript (text)      │
 │                   (Whisper)                             │
 └─────────────────────────────────────────────────────────┘
                               │
@@ -310,18 +254,7 @@ See [`1-train/README.md`](1-train/README.md) for details on the training pipelin
 
 ### How translation works — and why it has limits
 
-Whisper's decoder is conditioned on two special tokens at the start of every output sequence: a **language token** and a **task token** (`<|transcribe|>` or `<|translate|>`). Switching `--task translate` swaps the task token, instructing the decoder to produce English text instead of reproducing the source language.
-
-**Why the checkpoints weren't fine-tuned for translation:**
-The five checkpoints in this project were trained exclusively with `task=transcribe` — the decoder was always asked to reproduce the source-language text. The translation head (the weights that map from `<|translate|>` to English tokens) was never updated during fine-tuning; it retains OpenAI's pretrained values.
-
-**What this means in practice:**
-- Transcription quality benefits from fine-tuning on FLEURS. Translation quality does not — it reflects `openai/whisper-small`'s pretrained translation capability, which is weaker than its transcription capability, especially for `whisper-small`.
-- Mixed-language output (as seen in the ES→EN example above) is a known failure mode: the model partially reverts to the source language mid-sequence. This is more common with `whisper-small` and with languages that were less represented in Whisper's pretraining data.
-- Translation always outputs **English only** — Whisper's translate task is English-output only. There is no arbitrary source→target language pair support.
-- The `forced_decoder_ids` conflict warning printed at runtime is harmless: the checkpoint's baked-in `generation_config` sets `forced_decoder_ids` for transcription mode, but passing `task=translate` via `generate_kwargs` overrides it correctly.
-
-**To get higher-quality translation:** upgrade to `openai/whisper-large-v3` (change `MODEL_ID` in `1-train/train.py`) for better pretrained translation capability, or fine-tune explicitly in translation mode by setting `task="translate"` in `train.py` and providing paired audio + English reference transcripts (FLEURS includes these).
+See [`2-inference/README.md`](2-inference/README.md) for details on translation mode, constraints, and example output.
 
 
 ## References:
