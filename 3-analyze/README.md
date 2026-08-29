@@ -72,9 +72,11 @@ echo "Service job: $SVC"
 #### Step 3 — submit the batch analysis array
 
 ```bash
-N=$(find transcripts/ -name "*.txt" | wc -l)
-sbatch --dependency=after:$SVC --array=0-$((N-1)) 3-analyze/hpc/analyze-batch.sh transcripts/
+N=$(find results/ -name "*.txt" | wc -l)
+sbatch --dependency=after:$SVC --array=0-$((N-1)) 3-analyze/hpc/analyze-batch.sh results/
 ```
+
+The transcript folder argument can be any path (relative or absolute) — the script resolves it to an absolute path before mounting it inside the container. Output JSON files are written to `metadata/` at the project root.
 
 #### Interactive single transcript
 
@@ -86,8 +88,8 @@ sbatch --dependency=after:$SVC --array=0-$((N-1)) 3-analyze/hpc/analyze-batch.sh
 
 ```bash
 SVC=$(sbatch --parsable 3-analyze/hpc/2-ollama-serve-sbatch.sh)
-N=$(find transcripts/ -name "*.txt" | wc -l)
-sbatch --dependency=after:$SVC --array=0-$((N-1)) 3-analyze/hpc/analyze-batch.sh transcripts/
+N=$(find results/ -name "*.txt" | wc -l)
+sbatch --dependency=after:$SVC --array=0-$((N-1)) 3-analyze/hpc/analyze-batch.sh results/
 echo "Service job $SVC — analysis array queued behind it"
 ```
 
