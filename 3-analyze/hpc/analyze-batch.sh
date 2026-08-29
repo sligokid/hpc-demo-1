@@ -62,7 +62,7 @@ fi
 
 TRANSCRIPT=${TRANSCRIPTS[$SLURM_ARRAY_TASK_ID]}
 BASENAME=$(basename "$TRANSCRIPT" .txt)
-OUTPUT=metadata/${BASENAME}.json
+OUTPUT=$PROJECT_ROOT/metadata/${BASENAME}.json
 
 echo "============================================"
 echo "Job ID    : $SLURM_JOB_ID  Array task: $SLURM_ARRAY_TASK_ID"
