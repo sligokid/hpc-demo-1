@@ -53,6 +53,25 @@ python infer.py --model_dir checkpoints/es --audio path/to/audio.wav
 - Checkpoints saved per epoch; best model (lowest WER) loaded at end of training
 - `fp16=True` automatically enabled when a GPU is present
 
+## HPC Script Conventions
+
+**`bash -c "..."` wrapper in Singularity calls:** The scripts use `singularity exec ... bash -c "..."` rather than passing the python command directly. This is required so that `export LD_LIBRARY_PATH=...` runs *inside* the container environment and persists for the python process. Without the wrapper, environment variables set before the command would apply on the host, not inside the container, this enables the GPU on HPC sbatch jobs.
+
+**Project root binding:** All Singularity scripts bind the project root as `/workspace`. Because scripts live in subdirectories (`1-train/hpc/`, `2-inference/hpc/`), `$PWD` is wrong when running from inside those directories.
+
+- `sbatch` scripts (`1-train/hpc/`): use `SLURM_SUBMIT_DIR` (set by SLURM to the directory `sbatch` was called from):
+  ```bash
+  PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
+  ```
+- `srun` scripts (`2-inference/hpc/`): use `$PWD` at call time since srun is interactive:
+  ```bash
+  PROJECT_ROOT="$(cd "$PWD/../.." && pwd)"
+  ```
+
+Then bind with `--bind "$PROJECT_ROOT:/workspace"` instead of `--bind "$PWD:/workspace"`.
+
+**SIF location:** `whisper-hpc.sif` lives at `/scratch/project_465003209/mcgowank/whisper-hpc.sif` (not inside the project directory).
+
 ## Extending
 
 To add a language: add it to `LANGUAGE_CODES` and `COMMON_VOICE_SPLITS` in `1-train/train.py`, add it to the `LANGUAGES` array in the submit scripts, and expand `--array` to match.
