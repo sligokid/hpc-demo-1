@@ -1,0 +1,27 @@
+# Pipeline configuration — used by pipeline.py across all environments.
+# Override any value with an environment variable: PIPELINE_<KEY>=value
+# or pass --config /path/to/other.yaml to use a different file.
+
+# --- Paths (relative to project root, or absolute) ---
+inbox: inbox                         # drop audio files here in per-lang subfolders
+checkpoints: checkpoints            # per-lang checkpoint dirs (en/, es/, ...)
+results: results                    # output dir; per-lang subfolders created automatically
+
+# --- Languages to process (must match inbox subfolder names and checkpoint dirs) ---
+languages:
+  - en
+  - es
+  - fr
+  - zh
+  - ar
+
+# --- Infer stage ---
+infer:
+  enabled: true
+  audio_extensions: [.mp3, .mp4, .wav, .flac, .m4a, .ogg]
+
+# --- Analyze stage ---
+analyze:
+  enabled: true
+  model: llama3                     # Ollama model name
+  ollama_host: localhost:11434      # override per env (e.g. HPC endpoint file)
