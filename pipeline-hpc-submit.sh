@@ -26,8 +26,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Build manifest: pending audio files (no .done sidecar)
-MANIFEST=$(mktemp /tmp/pipeline-manifest.XXXXXX)
+# Build manifest in the project dir (shared filesystem — readable by compute nodes)
+mkdir -p logs
+MANIFEST="$PWD/logs/pipeline-manifest-$(date +%Y%m%d-%H%M%S).txt"
 
 if [ -n "$LANG_FILTER" ]; then
     SEARCH_DIRS=("$INBOX/$LANG_FILTER")
@@ -55,8 +56,6 @@ echo "Pending files : $N"
 echo "Manifest      : $MANIFEST"
 cat "$MANIFEST"
 echo ""
-
-mkdir -p logs
 
 # shellcheck disable=SC2086
 JID=$(sbatch \
