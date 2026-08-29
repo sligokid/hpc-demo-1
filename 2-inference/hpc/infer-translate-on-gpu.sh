@@ -5,7 +5,7 @@
 #   ./infer-translate-on-gpu.sh
 #
 
-SIF=/scratch/project_465003209/mcgowank/hpc-demo-1/whisper-hpc.sif
+SIF=/scratch/project_465003209/mcgowank/whisper-hpc.sif
 
 #srun --account project_465003209 --partition=small-g --time=04:00:00 --ntasks=1 --cpus-per-task=1 --nodes=1 --mem=128GB --gres=gpu:1 singularity exec --rocm --bind "$PWD:/workspace" "$SIF" bash -c "
 #export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib

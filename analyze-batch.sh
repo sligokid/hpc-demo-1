@@ -32,7 +32,7 @@ TRANSCRIPT_DIR=${1:?Usage: sbatch analyze-batch.sh <transcript-folder>}
 SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 #WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
-WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/hpc-demo-1/whisper-hpc.sif}
+WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
 # ---------------------
 
 mkdir -p logs metadata

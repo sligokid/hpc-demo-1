@@ -44,7 +44,7 @@ echo "============================================"
 
 # Path to the Singularity image (pull once with: singularity pull whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest)
 #SIF=${SIF:-$HOME/whisper-hpc.sif}
-SIF=/scratch/project_465003209/mcgowank/hpc-demo-1/whisper-hpc.sif
+SIF=/scratch/project_465003209/mcgowank/whisper-hpc.sif
 
 # SLURM_SUBMIT_DIR is the directory sbatch was run from — go up two levels to project root
 PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
