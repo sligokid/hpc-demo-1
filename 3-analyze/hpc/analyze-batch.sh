@@ -61,6 +61,8 @@ if [ "$SLURM_ARRAY_TASK_ID" -ge "${#TRANSCRIPTS[@]}" ]; then
 fi
 
 TRANSCRIPT=${TRANSCRIPTS[$SLURM_ARRAY_TASK_ID]}
+TRANSCRIPT_ABS=$(realpath "$TRANSCRIPT")
+TRANSCRIPT_CONTAINER="/workspace/${TRANSCRIPT_ABS#${PROJECT_ROOT}/}"
 BASENAME=$(basename "$TRANSCRIPT" .txt)
 OUTPUT=$PROJECT_ROOT/metadata/${BASENAME}.json
 
@@ -76,7 +78,7 @@ singularity exec \
     --bind "$PROJECT_ROOT:/workspace" \
     "$WHISPER_SIF" \
     python /workspace/3-analyze/analyze.py \
-        --transcript "/workspace/$TRANSCRIPT" \
+        --transcript "$TRANSCRIPT_CONTAINER" \
         --model "$MODEL" \
         --ollama-host "$OLLAMA_HOST" \
     > "$OUTPUT"
