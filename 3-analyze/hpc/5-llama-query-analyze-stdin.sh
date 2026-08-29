@@ -22,6 +22,6 @@ singularity exec \
     --bind "$REPO_ROOT:/workspace" \
     "$WHISPER_SIF" \
     python /workspace/3-analyze/analyze.py \
-        --transcript ../results/infer-on-gpu.sh.txt \
+        --transcript /workspace/results/infer-on-gpu.sh.txt \
         --model "$MODEL" \
         --ollama-host "$OLLAMA_HOST"
