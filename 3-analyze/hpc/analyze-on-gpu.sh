@@ -12,6 +12,7 @@ set -euo pipefail
 TRANSCRIPT=${1:?Usage: analyze-on-gpu.sh <transcript-file>}
 
 SCRATCH=/scratch/project_465003209/mcgowank
+PROJECT_ROOT="$(cd "$PWD/../.." && pwd)"
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 #WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
 WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
@@ -38,9 +39,9 @@ srun \
     --cpus-per-task 1 \
     --mem 4G \
     singularity exec \
-        --bind "$PWD:/workspace" \
+        --bind "$PROJECT_ROOT:/workspace" \
         "$WHISPER_SIF" \
-        python /workspace/analyze.py \
+        python /workspace/3-analyze/analyze.py \
             --transcript "/workspace/$TRANSCRIPT" \
             --model "$MODEL" \
             --ollama-host "$OLLAMA_HOST"

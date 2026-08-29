@@ -21,7 +21,7 @@ OLLAMA_HOST=$(cat "$ENDPOINT_FILE")
 singularity exec \
     --bind "$REPO_ROOT:/workspace" \
     "$WHISPER_SIF" \
-    python /workspace/analyze.py \
-        --transcript /workspace/results/infer-on-gpu.sh.txt \
+    python /workspace/3-analyze/analyze.py \
+        --transcript ../results/infer-on-gpu.sh.txt \
         --model "$MODEL" \
         --ollama-host "$OLLAMA_HOST"

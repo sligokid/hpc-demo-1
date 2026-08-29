@@ -33,9 +33,10 @@ SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 #WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
 WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
+PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
 # ---------------------
 
-mkdir -p logs metadata
+mkdir -p "$PROJECT_ROOT/logs" "$PROJECT_ROOT/metadata"
 
 # Fail fast if the Ollama service is not running
 if [ ! -f "$ENDPOINT_FILE" ]; then
@@ -72,9 +73,9 @@ echo "Model     : $MODEL"
 echo "============================================"
 
 singularity exec \
-    --bind "$PWD:/workspace" \
+    --bind "$PROJECT_ROOT:/workspace" \
     "$WHISPER_SIF" \
-    python /workspace/analyze.py \
+    python /workspace/3-analyze/analyze.py \
         --transcript "/workspace/$TRANSCRIPT" \
         --model "$MODEL" \
         --ollama-host "$OLLAMA_HOST" \
