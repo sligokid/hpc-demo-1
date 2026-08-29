@@ -40,7 +40,7 @@ def _import_from(module_name: str, file_path: pathlib.Path):
 
 # Lazy-load so missing deps only fail at runtime for that stage
 def _get_transcribe():
-    mod = _import_from("infer", PROJECT_ROOT / "2-inference" / "infer-30-secs.py")
+    mod = _import_from("infer", PROJECT_ROOT / "2-inference" / "infer.py")
     return mod.transcribe
 
 
