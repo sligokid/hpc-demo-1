@@ -6,8 +6,9 @@ Reuses:
   3-analyze/analyze.py          -> analyze()
 
 Usage:
-    python pipeline.py
-    python pipeline.py --config pipeline.yaml --lang en
+    python pipeline.py                                        # all pending files
+    python pipeline.py --lang en                              # one language
+    python pipeline.py --file inbox/en/foo.mp3                # single file (HPC array task)
     python pipeline.py --ollama-host 10.0.0.5:11434
 
 Done flagging:
@@ -86,6 +87,8 @@ def main():
     parser = argparse.ArgumentParser(description="Run infer → analyze pipeline per audio file.")
     parser.add_argument("--config", default="pipeline.yaml")
     parser.add_argument("--lang", default=None, help="Restrict to one language code")
+    parser.add_argument("--file", default=None,
+                        help="Process a single audio file (lang inferred from parent dir name)")
     parser.add_argument("--ollama-host", default=None,
                         help="Override ollama_host from config")
     args = parser.parse_args()
@@ -94,17 +97,23 @@ def main():
     if args.ollama_host:
         cfg["analyze"]["ollama_host"] = args.ollama_host
 
-    inbox = PROJECT_ROOT / cfg["inbox"]
     checkpoints = PROJECT_ROOT / cfg["checkpoints"]
     results = PROJECT_ROOT / cfg["results"]
-    languages = [args.lang] if args.lang else cfg["languages"]
-    extensions = cfg["infer"].get("audio_extensions", [".mp3", ".wav", ".flac"])
     infer_enabled = cfg["infer"].get("enabled", True)
     analyze_enabled = cfg["analyze"].get("enabled", True)
     ollama_host = cfg["analyze"]["ollama_host"]
     analyze_model = cfg["analyze"]["model"]
 
-    pending = find_pending(inbox, languages, extensions)
+    if args.file:
+        audio_path = pathlib.Path(args.file)
+        lang = audio_path.parent.name
+        pending = [(audio_path, lang)]
+    else:
+        inbox = PROJECT_ROOT / cfg["inbox"]
+        languages = [args.lang] if args.lang else cfg["languages"]
+        extensions = cfg["infer"].get("audio_extensions", [".mp3", ".wav", ".flac"])
+        pending = find_pending(inbox, languages, extensions)
+
     if not pending:
         print("No pending files found.")
         return
