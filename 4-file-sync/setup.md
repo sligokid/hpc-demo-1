@@ -123,7 +123,7 @@ Once the rclone config is set up (steps 1–4), run the container against your a
 Build the image for your local architecture (faster than cross-compiling):
 
 ```bash
-docker build --tag whisper-sync 3-sync/
+docker build --tag whisper-sync 4-file-sync/
 ```
 
 Create local landing directories:
@@ -180,52 +180,20 @@ docker buildx build \
 
 ## 7. Convert to SIF
 
-**On macOS**, `singularity build` requires a Linux environment. Use [Lima](https://github.com/lima-vm/lima) or [Colima](https://github.com/abiosoft/colima):
-
-```bash
-# Install Colima if not already installed
-brew install colima
-
-# Start a Linux VM with Docker socket forwarding
-colima start --arch x86_64
-
-# Build the SIF inside the VM (Apptainer/Singularity must be in the VM)
-# Alternatively: push to Docker Hub and build the SIF directly on LUMI (see Option B below)
-singularity build whisper-sync.sif docker-daemon://whisper-sync:latest
-```
-
-**Option B — push to Docker Hub and build on LUMI (simpler on macOS):**
+**Push to Docker Hub and build on LUMI:**
 
 ```bash
 # Locally
-docker tag whisper-sync your-dockerhub-user/whisper-sync:latest
-docker push your-dockerhub-user/whisper-sync:latest
+docker tag whisper-sync sligokid/whisper-sync:latest
+docker push sligokid/whisper-sync:lates
 
 # On LUMI
 singularity build \
     /scratch/project_465003209/mcgowank/whisper-sync.sif \
-    docker://your-dockerhub-user/whisper-sync:latest
+    docker://sligokid/whisper-sync:latest
 ```
 
----
-
-## 8. Upload the SIF to LUMI
-
-If you built the SIF locally (Option A above):
-
-```bash
-scp whisper-sync.sif lumi:/scratch/project_465003209/mcgowank/whisper-sync.sif
-```
-
-Verify it is there:
-
-```bash
-ssh lumi ls -lh /scratch/project_465003209/mcgowank/whisper-sync.sif
-```
-
----
-
-## 9. Copy the rclone config to LUMI
+## 8. Copy the rclone config to LUMI
 
 ```bash
 scp ~/.config/rclone/rclone.conf lumi:~/.config/rclone/rclone.conf

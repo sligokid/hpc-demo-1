@@ -49,7 +49,7 @@ trap 'sbatch "$SLURM_SUBMIT_DIR/submit-sync.sh" || echo "WARNING: resubmit faile
 # The rclone/rclone image expects it at /config/rclone/rclone.conf inside the container.
 singularity exec \
     --bind "$PROJECT_ROOT:/workspace" \
-    --bind "$HOME/.config/rclone:/config/rclone:ro" \
+    --bind "$HOME/.config/rclone:/config/rclone" \
     "$SIF" \
     bash -c "
         export WORKSPACE=/workspace
