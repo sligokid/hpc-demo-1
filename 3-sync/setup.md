@@ -104,7 +104,9 @@ rclone lsd gdrive:whisper-sync
 
 ## 5. Test locally with Docker
 
-Build the image and run the full sync test against a local mock remote — no Drive credentials needed at this stage:
+### 5a. Mock remote test (no credentials needed)
+
+Build the image and run the full sync test against a local mock remote:
 
 ```bash
 # From the project root
@@ -113,6 +115,52 @@ Build the image and run the full sync test against a local mock remote — no Dr
 ```
 
 Both should print `✓ All tests passed`.
+
+### 5b. Live test against real Google Drive
+
+Once the rclone config is set up (steps 1–4), run the container against your actual Drive folders to confirm credentials work end-to-end before deploying to LUMI.
+
+Build the image for your local architecture (faster than cross-compiling):
+
+```bash
+docker build --tag whisper-sync 3-sync/
+```
+
+Create local landing directories:
+
+```bash
+mkdir -p /tmp/whisper-sync/input /tmp/whisper-sync/output /tmp/whisper-sync/logs
+```
+
+Run one sync cycle against real Google Drive:
+
+```bash
+docker run --rm \
+    -v ~/.config/rclone:/config/rclone:ro \
+    -v /tmp/whisper-sync:/workspace \
+    -e WORKSPACE=/workspace \
+    -e RCLONE_REMOTE=gdrive \
+    -e DRIVE_INPUT=gdrive:whisper-sync/input \
+    -e DRIVE_OUTPUT=gdrive:whisper-sync/output \
+    whisper-sync
+```
+
+What to check after it runs:
+
+```bash
+# Any files in Drive input/ should appear here
+ls /tmp/whisper-sync/input/
+
+# The manifest lists newly arrived files
+cat /tmp/whisper-sync/logs/sync-manifest.txt
+
+# The per-run log
+cat /tmp/whisper-sync/logs/sync-*.out
+```
+
+Drop a test file into `gdrive:whisper-sync/input/` via the Google Drive web UI, re-run the `docker run` command, and confirm it appears in `/tmp/whisper-sync/input/`.
+
+> **Note:** The rclone config is mounted read-only (`:ro`). The container cannot modify or leak your credentials.
 
 ---
 
