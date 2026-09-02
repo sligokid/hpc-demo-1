@@ -3,9 +3,9 @@
 # or pass --config /path/to/other.yaml to use a different file.
 
 # --- Paths (relative to project root, or absolute) ---
-inbox: inbox                         # drop audio files here in per-lang subfolders
+inbox: sync/input                          # drop audio files here in per-lang subfolders
 checkpoints: checkpoints            # per-lang checkpoint dirs (en/, es/, ...)
-results: results                    # output dir; per-lang subfolders created automatically
+results: sync/output                    # output dir; per-lang subfolders created automatically
 
 # --- Languages to process (must match inbox subfolder names and checkpoint dirs) ---
 languages:
