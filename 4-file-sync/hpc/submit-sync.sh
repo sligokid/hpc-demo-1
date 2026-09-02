@@ -43,7 +43,7 @@ echo "============================================"
 
 # Resubmit this job on EXIT regardless of success or failure,
 # so the polling chain is never permanently broken by a single error.
-trap 'sbatch "$SLURM_SUBMIT_DIR/submit-sync.sh" || echo "WARNING: resubmit failed — chain stopped"' EXIT
+trap 'sbatch --begin=now+5minutes "$SLURM_SUBMIT_DIR/submit-sync.sh" || echo "WARNING: resubmit failed — chain stopped"' EXIT
 
 # rclone config lives on the host at ~/.config/rclone/rclone.conf.
 # The rclone/rclone image expects it at /config/rclone/rclone.conf inside the container.
