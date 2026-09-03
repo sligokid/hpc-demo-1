@@ -98,6 +98,63 @@ See [`3-analyze/README.md`](3-analyze/README.md) for full instructions — local
 └─────────────────────────────────────────────────────────┘
 ```
 
+## Automated HPC Pipeline
+
+The full pipeline (transcription → metadata generation) can run automatically on HPC with no manual intervention. Two self-resubmitting SLURM jobs handle file delivery and processing:
+
+```
+Google Drive                  LUMI HPC
+─────────────                 ────────────────────────────────────────
+whisper-sync/                 4-file-sync/hpc/submit-sync.sh  (every 10 min)
+  input/   ── rclone copy ──► inbox/
+  output/  ◄─ rclone copy ── results/
+
+                              pipeline-hpc-poll.sh  (every 10 min)
+                              └─► pipeline-hpc-submit.sh
+                                  └─► pipeline-hpc-sbatch.sh (array job, 1 GPU per file)
+                                      ├─► 2-inference/infer.py   (Whisper transcription)
+                                      └─► 3-analyze/analyze.py   (Ollama metadata)
+```
+
+### Start the automated pipeline on LUMI
+
+**Prerequisites:** Singularity images built and in scratch, rclone config copied to LUMI.
+
+```bash
+cd /scratch/project_465003209/mcgowank/hpc-demo-1
+
+# 1. Start the Ollama inference service (self-resubmits every 8 hours)
+sbatch 3-analyze/hpc/2-ollama-serve-sbatch.sh
+
+# 2. Start the file sync loop (polls Google Drive every 10 minutes)
+cd 4-file-sync/hpc && sbatch submit-sync.sh && cd ../..
+
+# 3. Start the pipeline poller (submits jobs for new files every 10 minutes)
+sbatch pipeline-hpc-poll.sh
+```
+
+All three jobs are now running. Ollama must be ready before the pipeline poller submits work — check `squeue` and wait for the Ollama job to move from `PD` to `R` before dropping files into Drive. Drop audio or video files into `whisper-sync/input/` in Google Drive — they will be picked up, transcribed, and analysed automatically. Results appear in `whisper-sync/output/`.
+
+### Monitor
+
+```bash
+squeue -u $USER                                  # see both polling jobs + any pipeline array jobs
+tail -f logs/sync-slurm-<jobid>.out             # sync loop log
+tail -f logs/poll-slurm-<jobid>.out             # pipeline poller log
+tail -f logs/<arrayjobid>_<taskid>.out          # individual file processing log
+cat logs/sync-manifest.txt                       # files received from Drive
+```
+
+### Stop everything
+
+```bash
+scancel -u $USER
+```
+
+### File sync setup
+
+See [`4-file-sync/setup.md`](4-file-sync/setup.md) for one-time rclone + Google Drive OAuth2 setup, Docker image build, SIF conversion, and cloud provider swap instructions (GCS, S3).
+
 ## How it works
 
 See [`1-train/README.md`](1-train/README.md) for details on the training pipeline.
