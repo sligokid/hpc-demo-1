@@ -4,6 +4,52 @@
 
 Fine-tunes `openai/whisper-small` on [Google FLEURS](https://huggingface.co/datasets/google/fleurs) across five languages simultaneously using a SLURM job array on HPC GPU infrastructure. Demonstrates how multilingual speech model training that would take weeks on standard infrastructure can be reduced to days.
 
+```
+  ┌─────────────────────┐
+  │   Fine-tune         │
+  │   Whisper (GPU)     │
+  │   Google FLEURS     │
+  │   en,es,fr,zh,ar    │
+  └──────────┬──────────┘
+             │  
+             ▼
+    checkpoints/<lang>
+
+
+
+  ┌─────────────────────┐
+  │   Google Drive      │◄── [ Upload mp3/mp4/wav/flac ]
+  │  whisper-sync/input │
+  └──────────┬──────────┘
+             │  rclone (every 10 min)
+             ▼
+  ┌─────────────────────┐
+  │   LUMI HPC          │
+  │   scratch/sync/input│
+  └──────────┬──────────┘
+             │  pipeline-hpc-poll.sh (every 10 min)
+             ▼
+  ┌─────────────────────┐
+  │   Transcribe        │
+  │   Whisper (GPU)     │
+  └──────────┬──────────┘
+             │
+             ▼
+  ┌─────────────────────┐
+  │   Extract           │
+  │   Llama via Ollama  │
+  │   title, tags,      │
+  │   summary, skills   │
+  │ /scratch/sync/output│
+  └──────────┬──────────┘
+             │  rclone (every 10 min)
+             ▼
+  ┌─────────────────────┐
+  │   Google Drive      │◄── [ Download Transcription Text and Feature JSON here ]
+  │  whisper-sync/output│
+  └─────────────────────┘
+```
+
 ## Languages
 
 | Code | Language | FLEURS locale |
