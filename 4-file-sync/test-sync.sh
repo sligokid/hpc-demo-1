@@ -4,7 +4,7 @@
 # No cloud credentials, no Docker, no HPC needed.
 #
 # Usage:
-#   ./3-sync/test-sync.sh
+#   ./4-file-sync/test-sync.sh
 
 set -euo pipefail
 

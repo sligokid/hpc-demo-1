@@ -63,7 +63,7 @@ Introduce a dedicated sync stage (`3-sync/`) that packages rclone and the sync s
 - Mounts a local `sync/` and `logs/` directory to verify manifest output and file arrival
 - Validates the full sync cycle on a developer laptop with no cloud credentials required
 
-**`3-sync/hpc/submit-sync.sh` — SLURM job definition**
+**`3-sync/hpc/sync-sbatch.sh` — SLURM job definition**
 - SLURM directives: `--account project_465003209`, `--partition=small` (CPU partition), `--time=00:10:00`, `--ntasks=1`, `--cpus-per-task=1`, `--mem=4GB`
 - Resolves project root via `SLURM_SUBMIT_DIR`, consistent with `1-train/hpc/` conventions
 - Runs the sync via `singularity exec --bind "$PROJECT_ROOT:/workspace" "$SIF" bash -c "..."`
@@ -122,7 +122,7 @@ A good test validates external behaviour — what the module produces or changes
 
 **`3-sync/sync.sh` is independently testable** by running the container with a local remote and inspecting outputs — no SLURM or HPC access required.
 
-The SLURM submission script (`submit-sync.sh`) is not unit-tested — its correctness is validated by submitting to LUMI and observing job queue behaviour.
+The SLURM submission script (`sync-sbatch.sh`) is not unit-tested — its correctness is validated by submitting to LUMI and observing job queue behaviour.
 
 There are no existing automated tests in the repo to use as prior art; `2-inference/test_infer.py` is the closest example and tests the `transcribe()` function in isolation with a real audio file.
 
@@ -141,7 +141,7 @@ There are no existing automated tests in the repo to use as prior art; `2-infere
 
 ## Further Notes
 
-- The self-resubmitting chain will stop if the SLURM job fails. The sync script should exit non-zero on rclone errors so the failure is visible in SLURM logs, but the `submit-sync.sh` job body should resubmit regardless of exit code so the polling chain is never silently broken.
+- The self-resubmitting chain will stop if the SLURM job fails. The sync script should exit non-zero on rclone errors so the failure is visible in SLURM logs, but the `sync-sbatch.sh` job body should resubmit regardless of exit code so the polling chain is never silently broken.
 - LUMI's `small` partition has a maximum wall time; confirm `--time=00:10:00` is within the limit before deploying.
 - Google Drive API has a default rate limit of 10,000 requests per 100 seconds per user. A 5-minute polling interval is well within this limit.
 - The two Drive folders (`whisper-sync/input` and `whisper-sync/output`) must be created manually in Drive before the first sync run. rclone will not create top-level Drive folders automatically.

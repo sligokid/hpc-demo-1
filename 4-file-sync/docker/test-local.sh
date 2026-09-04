@@ -6,7 +6,7 @@
 # No cloud credentials required.
 #
 # Usage:
-#   ./3-sync/docker/test-local.sh
+#   ./4-file-sync/docker/test-local.sh
 
 set -euo pipefail
 
@@ -22,7 +22,7 @@ docker buildx build \
     --platform linux/amd64 \
     --load \
     --tag "$IMAGE" \
-    "$REPO_ROOT/3-sync"
+    "$REPO_ROOT/4-file-sync"
 
 # ── Test workspace setup ───────────────────────────────────────────────────────
 

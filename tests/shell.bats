@@ -9,9 +9,9 @@
 #   brew install bats-core          # macOS
 #   apt-get install bats            # Debian/Ubuntu
 
-OLLAMA_SERVE="$BATS_TEST_DIRNAME/../ollama/hpc/2-ollama-serve-sbatch.sh"
-OLLAMA_PULL="$BATS_TEST_DIRNAME/../ollama/hpc/3-ollama-pull.sh"
-ANALYZE_BATCH="$BATS_TEST_DIRNAME/../analyze-batch.sh"
+OLLAMA_SERVE="$BATS_TEST_DIRNAME/../3-analyze/hpc/2-ollama-serve-sbatch.sh"
+OLLAMA_PULL="$BATS_TEST_DIRNAME/../3-analyze/hpc/3-ollama-pull-llama3.sh"
+ANALYZE_BATCH="$BATS_TEST_DIRNAME/../3-analyze/hpc/analyze-sbatch.sh"
 
 setup() {
     SCRATCH=$(mktemp -d)

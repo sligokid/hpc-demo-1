@@ -2,8 +2,7 @@
 # SLURM array job: run the full pipeline (infer -> analyze) for each audio file in parallel.
 # Each array task processes one file from the manifest.
 #
-# Do not submit this script directly — use pipeline-hpc-submit.sh which
-# generates the manifest and sets --array correctly.
+# Do not submit this script directly — use pipeline-hpc-submit.sh which generates the manifest and sets --array correctly.
 #
 # Prerequisites:
 #   1. Ollama service is running and has written the endpoint file

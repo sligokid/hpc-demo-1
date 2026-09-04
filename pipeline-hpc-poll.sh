@@ -1,8 +1,8 @@
 #!/bin/bash
 # SLURM scheduler: check for new audio files every 10 minutes and submit the pipeline.
 #
-# Runs pipeline-hpc-submit.sh on each cycle. If new files are found a pipeline
-# array job is submitted automatically. If no files are pending, does nothing.
+# Runs pipeline-hpc-submit.sh on each cycle. 
+#   - If new files are found a pipeline array job is submitted automatically. If no files are pending, does nothing.
 #
 # Submit once from the project root to start the polling loop:
 #   sbatch pipeline-hpc-poll.sh

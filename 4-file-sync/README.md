@@ -110,8 +110,8 @@ Build the image and run the full sync test against a local mock remote:
 
 ```bash
 # From the project root
-./3-sync/test-sync.sh          # tests sync.sh directly (requires rclone on PATH)
-./3-sync/docker/test-local.sh  # tests the full Docker image end-to-end
+./4-file-sync/test-sync.sh          # tests sync.sh directly (requires rclone on PATH)
+./4-file-sync/docker/test-local.sh  # tests the full Docker image end-to-end
 ```
 
 Both should print `✓ All tests passed`.
@@ -173,7 +173,7 @@ docker buildx build \
     --platform linux/amd64 \
     --load \
     --tag whisper-sync \
-    3-sync/
+    4-file-sync/
 ```
 
 ---
@@ -185,7 +185,7 @@ docker buildx build \
 ```bash
 # Locally
 docker tag whisper-sync sligokid/whisper-sync:latest
-docker push sligokid/whisper-sync:lates
+docker push sligokid/whisper-sync:latest
 
 # On LUMI
 singularity build \
@@ -208,8 +208,8 @@ SSH into LUMI, navigate to the sync job directory, and submit:
 
 ```bash
 ssh lumi
-cd /scratch/project_465003209/mcgowank/hpc-demo-1/3-sync/hpc
-sbatch submit-sync.sh
+cd /scratch/project_465003209/mcgowank/hpc-demo-1/4-file-sync/hpc
+sbatch sync-sbatch.sh
 ```
 
 The job runs one sync cycle and resubmits itself on exit. The chain continues indefinitely until you cancel it.
@@ -242,15 +242,15 @@ scancel <jobid>
 The chain stops if you cancel the job or if `sbatch` itself fails (rare). To restart:
 
 ```bash
-cd /scratch/project_465003209/mcgowank/hpc-demo-1/3-sync/hpc
-sbatch submit-sync.sh
+cd /scratch/project_465003209/mcgowank/hpc-demo-1/4-file-sync/hpc
+sbatch sync-sbatch.sh
 ```
 
 ---
 
 ## Swapping cloud provider
 
-All cloud provider config is isolated to two places: the rclone remote definition in `~/.config/rclone/rclone.conf` and the two env vars in `3-sync/hpc/submit-sync.sh`. No script logic changes.
+All cloud provider config is isolated to two places: the rclone remote definition in `~/.config/rclone/rclone.conf` and the two env vars in `4-file-sync/hpc/sync-sbatch.sh`. No script logic changes.
 
 ### Switch to Google Cloud Storage (GCS)
 
@@ -264,7 +264,7 @@ object_acl = private
 bucket_acl = private
 ```
 
-2. In `3-sync/hpc/submit-sync.sh`, update the env vars:
+2. In `4-file-sync/hpc/sync-sbatch.sh`, update the env vars:
 
 ```bash
 export RCLONE_REMOTE=gcs
@@ -285,7 +285,7 @@ secret_access_key = YOUR_SECRET_KEY
 region = eu-west-1
 ```
 
-2. In `3-sync/hpc/submit-sync.sh`, update the env vars:
+2. In `4-file-sync/hpc/sync-sbatch.sh`, update the env vars:
 
 ```bash
 export RCLONE_REMOTE=s3

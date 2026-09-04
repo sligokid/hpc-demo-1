@@ -8,7 +8,7 @@ Convert the Docker image to a Singularity SIF file and write the SLURM job that 
 
 Deliver two artefacts:
 - `whisper-sync.sif` — built from the Docker image via `singularity build`, stored at `/scratch/project_465003209/mcgowank/whisper-sync.sif` on LUMI
-- `3-sync/hpc/submit-sync.sh` — SLURM job definition that runs the SIF via `singularity exec`, binds `/workspace`, mounts the rclone config read-only, and resubmits itself at the end of every run
+- `3-sync/hpc/sync-sbatch.sh` — SLURM job definition that runs the SIF via `singularity exec`, binds `/workspace`, mounts the rclone config read-only, and resubmits itself at the end of every run
 
 The SLURM script follows existing repo conventions: `SLURM_SUBMIT_DIR` for project root resolution, `--account project_465003209`, `--partition=small`, and the `bash -c "..."` wrapper pattern used in all other HPC scripts.
 
@@ -18,7 +18,7 @@ See the Modules and Architectural Decisions sections of the parent PRD for the f
 
 - [ ] `singularity build whisper-sync.sif docker-daemon://whisper-sync:latest` completes successfully
 - [ ] SIF is uploaded to `/scratch/project_465003209/mcgowank/whisper-sync.sif` on LUMI
-- [ ] `sbatch 3-sync/hpc/submit-sync.sh` submits without errors and appears in `squeue` output
+- [ ] `sbatch 3-sync/hpc/sync-sbatch.sh` submits without errors and appears in `squeue` output
 - [ ] The job completes one sync cycle (download pass + upload pass + manifest update) and writes a log to `logs/`
 - [ ] The job resubmits itself after completion — a second job appears in `squeue` without manual intervention
 - [ ] A test audio file placed in the Drive `whisper-sync/input/` folder appears in `/scratch/.../sync/input/` after the next cycle

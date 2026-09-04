@@ -15,7 +15,7 @@ The guide covers:
 6. `docker build` and running `test-local.sh` to verify locally
 7. SIF conversion (`singularity build`) — including macOS note (requires Linux environment via Lima/Colima)
 8. `scp` to upload SIF to LUMI scratch
-9. `sbatch 3-sync/hpc/submit-sync.sh` to start the polling chain
+9. `sbatch 3-sync/hpc/sync-sbatch.sh` to start the polling chain
 10. How to verify the chain is running (`squeue`, `tail logs/`)
 11. Cloud provider swap section: GCS — update rclone remote type + two env vars, no script changes; S3 — same pattern
 

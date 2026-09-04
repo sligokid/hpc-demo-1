@@ -1,6 +1,8 @@
 #!/bin/bash
-# Generate a manifest of pending audio files and submit a SLURM array job.
-# One array task per file — all run in parallel.
+# Generates the manifest and sets slurm --array correctly, one array task per file.
+# 
+# Runs pipeline-hpc-submit.sh on each cycle. 
+# - If new files are found a pipeline array job is submitted automatically. If no files are pending, does nothing.
 #
 # Usage:
 #   ./pipeline-hpc-submit.sh
