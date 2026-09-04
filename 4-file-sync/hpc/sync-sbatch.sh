@@ -4,9 +4,9 @@
 # Runs one sync cycle then resubmits itself to create a 5-minute polling loop.
 # No crontab required — the chain is started once and continues indefinitely.
 #
-# Submit (from this directory):
-#   cd 4-file-sync/hpc
-#   sbatch sync-sbatch.sh
+# Submit (from project root or this directory):
+#   sbatch 4-file-sync/hpc/sync-sbatch.sh
+#   cd 4-file-sync/hpc && sbatch sync-sbatch.sh
 #
 # Stop the chain:
 #   scancel <jobid>
@@ -28,9 +28,10 @@
 
 SIF=/scratch/project_465003209/mcgowank/whisper-sync.sif
 
-# SLURM_SUBMIT_DIR is the directory sbatch was called from (4-file-sync/hpc/).
-# Go up two levels to reach the project root.
-PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
+# Resolve project root from this script's own location so it works whether
+# submitted from the project root or from 4-file-sync/hpc/.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 mkdir -p "$PROJECT_ROOT/sync/input" "$PROJECT_ROOT/sync/output" "$PROJECT_ROOT/logs"
 
@@ -43,7 +44,7 @@ echo "============================================"
 
 # Resubmit this job on EXIT regardless of success or failure,
 # so the polling chain is never permanently broken by a single error.
-trap 'sbatch --begin=now+5minutes "$SLURM_SUBMIT_DIR/sync-sbatch.sh" || echo "WARNING: resubmit failed — chain stopped"' EXIT
+trap 'sbatch --begin=now+5minutes "$SCRIPT_DIR/sync-sbatch.sh" || echo "WARNING: resubmit failed — chain stopped"' EXIT
 
 # rclone config lives on the host at ~/.config/rclone/rclone.conf.
 # The rclone/rclone image expects it at /config/rclone/rclone.conf inside the container.

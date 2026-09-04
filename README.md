@@ -108,7 +108,7 @@ cd /scratch/project_465003209/mcgowank/hpc-demo-1
 sbatch 3-analyze/hpc/2-ollama-serve-sbatch.sh
 
 # 2. Start the file sync loop (polls Google Drive every 5 minutes)
-cd 4-file-sync/hpc && sbatch sync-sbatch.sh && cd ../..
+sbatch 4-file-sync/hpc/sync-sbatch.sh
 
 # 3. Start the pipeline poller (scans sync/input/ and launches jobs every 10 minutes)
 sbatch pipeline-hpc-poll.sh
