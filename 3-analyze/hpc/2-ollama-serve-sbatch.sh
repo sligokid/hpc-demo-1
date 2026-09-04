@@ -50,14 +50,8 @@ echo "Port     : $OLLAMA_PORT"
 echo "Endpoint : $ENDPOINT_FILE"
 echo "============================================"
 
-# Remove discovery file on any exit so stale endpoints don't mislead future jobs.
-# Resubmit immediately so the service restarts when SLURM hits the wall time.
-cleanup() {
-    echo "Cleaning up endpoint file..."
-    rm -f "$ENDPOINT_FILE"
-    sbatch "$SLURM_SUBMIT_DIR/2-ollama-serve-sbatch.sh" || echo "WARNING: resubmit failed — Ollama service stopped"
-}
-trap cleanup EXIT
+# Remove discovery file and resubmit on exit so the service restarts automatically.
+trap 'rm -f "$ENDPOINT_FILE"; sbatch "$SLURM_SUBMIT_DIR/2-ollama-serve-sbatch.sh" || echo "WARNING: resubmit failed — Ollama service stopped"' EXIT
 
 # Fail fast if port is already in use on this node
 if ss -tlnp 2>/dev/null | grep -q ":${OLLAMA_PORT} "; then
