@@ -23,6 +23,9 @@ The existing pipeline produces transcripts and JSON metadata but provides no way
 3. Detect and store sentiment signals per video to identify tone, confidence, and organisational health
 4. Generate personalised playlists per user based on role and watch history
 5. Produce reproducible benchmark results for latency and multilingual retrieval accuracy
+6. Upgrade transcription model from Whisper Small to Whisper large-v3 and benchmark WER improvement (target: 60% improvement in non-English transcription)
+7. Track all training experiments with MLflow for reproducibility and grant auditability
+8. Benchmark end-to-end pipeline latency from file drop on Google Drive to results available in Qdrant
 
 ---
 
@@ -340,6 +343,13 @@ Edge weight = number of shared tags between two videos. Nodes coloured by sentim
 
 ## Benchmarking
 
+### A — Word Error Rate (Whisper Small vs large-v3)
+
+1. Run both models against the same held-out FLEURS test samples for all 5 languages
+2. Compute WER per language per model
+3. Report percentage improvement — target: 60% reduction in WER for non-English languages
+4. Track runs in MLflow: model name, language, WER, training duration, GPU hours consumed
+
 ### B — Synthetic query recall
 
 1. For each video, call Llama 3 to generate 3 natural-language questions answerable from its transcript
@@ -352,7 +362,14 @@ Edge weight = number of shared tags between two videos. Nodes coloured by sentim
 2. Query in English, verify the non-English equivalent appears in top-5 results
 3. Report cross-language retrieval rate
 
-**Benchmark report format:** `benchmark-report.json` + `benchmark-report.md` summary, rcloned to Google Drive alongside transcripts.
+### D — End-to-end pipeline latency
+
+1. Drop a new audio file onto Google Drive
+2. Measure wall-clock time to: file detected → transferred to LUMI → transcribed → analysed → embedded → searchable in Qdrant
+3. Report per-stage breakdown and total latency
+4. Target: results searchable within 15 minutes of upload for a 10-minute audio file
+
+**Benchmark report format:** `benchmark-report.json` + `benchmark-report.md` summary, rcloned to Google Drive alongside transcripts. All runs logged to MLflow.
 
 ---
 
@@ -363,18 +380,20 @@ Edge weight = number of shared tags between two videos. Nodes coloured by sentim
 | # | File / Directory | Description |
 |---|---|---|
 | 1 | `2-inference/infer.py` | Add `--segments` flag, emit `segments.json` with Whisper timestamps |
-| 2 | `5-embed/embed-server.py` | HTTP service, loads e5-large, accepts chunk batches, POSTs to Qdrant |
-| 3 | `5-embed/sentiment.py` | Per-video sentiment scoring with xlm-roberta |
-| 4 | `5-embed/label.py` | Llama 3 auto-labelling of transcript chunks for fine-tuning data |
-| 5 | `pipeline.py` | Stage 4 (sentiment) + Stage 5 (embed + index) integration |
-| 6 | `search.py` | CLI semantic search with lang / date / user filters |
-| 7 | `graph.py` | Exports `graph.json` and `graph.html` |
-| 8 | `graph.html` | Self-contained D3.js/vis.js knowledge graph viewer |
-| 9 | `playlist.py` | CLI personalised playlist generator |
-| 10 | `roles.yaml` | Role → tag mapping for playlist ranking |
-| 11 | `profiles/` | Per-user profile JSON files |
-| 12 | `benchmark.py` | Synthetic query + cross-language retrieval benchmark |
-| 13 | `5-embed/test_embed.py` | Unit tests for embed-server, sentiment, label |
+| 2 | `1-train/train.py` | Add `whisper-large-v3` support alongside `whisper-small` |
+| 3 | `5-embed/embed-server.py` | HTTP service, loads e5-large, accepts chunk batches, POSTs to Qdrant |
+| 4 | `5-embed/sentiment.py` | Per-video sentiment scoring with xlm-roberta |
+| 5 | `5-embed/label.py` | Llama 3 auto-labelling of transcript chunks for fine-tuning data |
+| 6 | `pipeline.py` | Stage 4 (sentiment) + Stage 5 (embed + index) integration |
+| 7 | `search.py` | CLI semantic search with lang / date / user filters |
+| 8 | `graph.py` | Exports `graph.json` and `graph.html` |
+| 9 | `graph.html` | Self-contained D3.js/vis.js knowledge graph viewer |
+| 10 | `playlist.py` | CLI personalised playlist generator (opt-out aware) |
+| 11 | `roles.yaml` | Role → tag mapping for playlist ranking |
+| 12 | `profiles/` | Per-user profile JSON files |
+| 13 | `benchmark.py` | WER, synthetic query, cross-language, end-to-end latency benchmarks |
+| 14 | `mlflow_config.yaml` | MLflow tracking server config and experiment naming conventions |
+| 15 | `5-embed/test_embed.py` | Unit tests for embed-server, sentiment, label |
 
 ### Local
 
@@ -406,12 +425,15 @@ Edge weight = number of shared tags between two videos. Nodes coloured by sentim
 
 | Metric | Target |
 |---|---|
+| WER improvement (non-English, large-v3 vs small) | > 60% reduction |
 | Recall@5 (synthetic queries) | > 0.80 across all 5 languages |
 | Cross-language retrieval rate | > 0.70 (English query returns correct non-English video in top-5) |
 | Embedding throughput | > 10 chunks/sec on a single GPU node |
 | Qdrant query latency | < 100ms for top-5 search across 10,000 chunks |
+| End-to-end pipeline latency | < 15 minutes from upload to searchable (10-min audio file) |
 | Graph renders correctly | All indexed videos appear as nodes with correct edges |
 | Playlist generation | Returns > 0 results for any user with a defined role |
+| MLflow experiment coverage | 100% of training runs logged with model, language, WER, GPU hours |
 
 ---
 
@@ -451,6 +473,22 @@ sbatch pipeline-hpc-poll.sh
 
 ---
 
+## Governance & EU AI Act Compliance
+
+SLICK+ has been assessed by CSC's Senior Coordinator for Trustworthy AI as not high-risk under the EU AI Act, based on its role as a knowledge-sharing and learning tool — not a system for recruitment, employee evaluation, performance monitoring or discipline.
+
+The following constraints are **design requirements**, not optional:
+
+- **No individual performance scoring.** The personalisation engine must not generate per-employee engagement scores visible to managers.
+- **Opt-out required.** Employees must be able to disable personalisation and browse all content freely without any record being kept of that choice.
+- **No management-visible engagement data in standard mode.** Watch history used for playlist ranking is used only to personalise the individual's own experience.
+- **Consent-based data collection.** Any use of real employee video or audio data requires a signed Data Processing Agreement before processing on LUMI-G infrastructure (required before Task 3 enterprise pilot).
+- **Training data for this PRD uses public FLEURS data and synthetic/dummy inputs only.** No real employee data is processed until the Task 3 DPA is in place.
+
+These constraints must be documented in `5-embed/README.md` and reflected in the `playlist.py` and `profiles/` design.
+
+---
+
 ## Phase 2 Backlog
 
 - Fine-tune `xlm-roberta` on Llama 3 silver labels (SLURM GPU array, mirrors Stage 1 pattern)
@@ -460,3 +498,39 @@ sbatch pipeline-hpc-poll.sh
 - Richer behavioural signals: replay rate, watch duration, Slack/Jira integrations
 - Knowledge gap detection: identify topics with no coverage or low sentiment
 - Impact Slick nudge: surface underviewed high-quality content
+
+---
+
+## Task 3 Future Enhancements
+
+### Video-to-SOP / Checklist Generation
+
+Every video should become more than a clip. A second Llama 3 prompt pass on the transcript generates a structured Standard Operating Procedure, checklist, or markdown guide — with human review before publishing.
+
+**Example:** A line worker records how they clear a jam on Line 3. The system auto-generates a draft maintenance SOP with numbered steps, risks to watch for, and tools required. A supervisor reviews and approves. The SOP is linked to the original video and searchable alongside it.
+
+**Implementation sketch:**
+- `3-analyze/sop.py` — second prompt pass on `transcript.txt`, outputs `<stem>.sop.md`
+- SOP format: title, numbered steps, risks, required tools/skills, human-review flag
+- Integrated into `pipeline.py` as an optional Stage 3b (off by default, enabled via `pipeline.yaml`)
+- Rcloned to Google Drive alongside `analysis.json`
+
+**Why it matters:** Transforms informal video knowledge into auditable, reusable operational documentation — directly addressing compliance, onboarding, and process standardisation needs in regulated frontline environments.
+
+---
+
+### Knowledge Champions & Emerging Talent Detection
+
+The Qdrant index already stores `uploaded_by`, `tags`, `skills`, and `date_processed` per video. A query layer on top of this data surfaces organisational intelligence without any additional model or data collection.
+
+**`insights.py`** queries `video_metadata` and produces an `insights.json` report covering:
+
+- **Knowledge champions** — contributors with the highest upload frequency and broadest tag diversity across topics
+- **Emerging contributors** — accounts with rapidly increasing upload rate over a rolling 30-day window
+- **Single-contributor topics** — tags or skills covered by only one person (knowledge concentration risk)
+- **Collaboration patterns** — topics where multiple contributors have uploaded, indicating shared expertise
+- **Coverage gaps** — roles in `roles.yaml` with no matching videos in the library
+
+**Design constraint (EU AI Act):** `insights.py` reports are aggregate and anonymous by default. Individual contributor data is only surfaced to designated admins and is never used for performance evaluation, discipline, or recruitment decisions. Opt-out from contributor tracking must be honoured.
+
+**Output:** `insights.json` + `insights.md` human-readable summary, rcloned to Google Drive on a scheduled basis.
