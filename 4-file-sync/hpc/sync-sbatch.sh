@@ -15,7 +15,7 @@
 #   tail -f logs/sync-<timestamp>.out
 #
 
-#SBATCH --job-name=whisper-sync
+#SBATCH --job-name=B-sync
 #SBATCH --partition=small
 #SBATCH --account=project_465003209
 #SBATCH --ntasks=1

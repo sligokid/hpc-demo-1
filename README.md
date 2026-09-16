@@ -104,13 +104,13 @@ whisper-sync/                     4-file-sync/hpc/sync-sbatch.sh (every 5 min)
 ```bash
 cd /scratch/project_465003209/mcgowank/hpc-demo-1
 
-# 1. Start the persistent Ollama GPU service (self-resubmits every 8 hours)
+# 1. Start the persistent Ollama GPU service (self-resubmits every 8 hours) : A-ollama
 sbatch 3-analyze/hpc/2-ollama-serve-sbatch.sh
 
-# 2. Start the file sync loop (polls Google Drive every 5 minutes)
+# 2. Start the file sync loop (polls Google Drive every 5 minutes): B-sync
 sbatch 4-file-sync/hpc/sync-sbatch.sh
 
-# 3. Start the pipeline poller (scans sync/input/ and launches jobs every 10 minutes)
+# 3. Start the pipeline poller (scans sync/input/ and launches jobs every 10 minutes): C-poll
 sbatch pipeline-hpc-poll.sh
 ```
 

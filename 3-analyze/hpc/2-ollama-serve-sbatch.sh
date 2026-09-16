@@ -15,7 +15,7 @@
 # compatible with the cluster driver before running in production.
 # Check with: singularity run ollama.sif -- rocm-smi --version
 
-#SBATCH --job-name=ollama-serve
+#SBATCH --job-name=A-ollama
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
