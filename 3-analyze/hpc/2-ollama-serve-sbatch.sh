@@ -22,8 +22,8 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --time=08:00:00
-#SBATCH --output=logs/%j.out
-#SBATCH --error=logs/%j.err
+#SBATCH --output=logs/ollama-slurm-%j.out
+#SBATCH --error=logs/ollama-slurm-%j.err
 #SBATCH --account=project_465003209
 #SBATCH --partition=small-g
 
@@ -50,8 +50,8 @@ echo "Port     : $OLLAMA_PORT"
 echo "Endpoint : $ENDPOINT_FILE"
 echo "============================================"
 
-# Remove discovery file and resubmit on exit so the service restarts automatically.
-trap 'rm -f "$ENDPOINT_FILE"; sbatch "$SLURM_SUBMIT_DIR/2-ollama-serve-sbatch.sh" || echo "WARNING: resubmit failed — Ollama service stopped"' EXIT
+# Clean up endpoint file on exit.
+trap 'rm -f "$ENDPOINT_FILE"' EXIT
 
 # Fail fast if port is already in use on this node
 if ss -tlnp 2>/dev/null | grep -q ":${OLLAMA_PORT} "; then
