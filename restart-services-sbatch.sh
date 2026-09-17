@@ -27,16 +27,18 @@ echo "Started : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "============================================"
 
 # Resubmit this job every 12 hours.
-trap 'sbatch --begin=now+12hours "$SLURM_SUBMIT_DIR/restart-services.sh" || echo "WARNING: D-restart resubmit failed"' EXIT
+trap 'sbatch --begin=now+12hours "$SLURM_SUBMIT_DIR/restart-services-sbatch.sh" || echo "WARNING: D-restart resubmit failed"' EXIT
 
 # Cancel services by name — safe to run inside a SLURM job (does not cancel this job).
 echo "Cancelling service jobs..."
-scancel -n A-ollama -n B-sync -n C-poll 2>/dev/null || true
-
-sleep 120
+for job_name in A-ollama B-sync C-poll; do
+    scancel --name="$job_name" --user="$USER" 2>/dev/null || true
+done
 
 echo "Submitting A-ollama..."
 sbatch "$PROJECT_ROOT/3-analyze/hpc/2-ollama-serve-sbatch.sh"
+echo "Waiting 2 minutes for A-ollama to start..."
+sleep 120
 
 echo "Submitting B-sync..."
 sbatch "$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"
