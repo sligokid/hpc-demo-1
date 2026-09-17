@@ -35,6 +35,9 @@ for job_name in A-ollama B-sync C-poll; do
     scancel --name="$job_name" --user="$USER" 2>/dev/null || true
 done
 
+echo "Waiting 2 minutes for services to die..."
+sleep 120
+
 echo "Submitting A-ollama..."
 sbatch "$PROJECT_ROOT/3-analyze/hpc/2-ollama-serve-sbatch.sh"
 echo "Waiting 2 minutes for A-ollama to start..."

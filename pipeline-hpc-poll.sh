@@ -36,5 +36,8 @@ echo "Node    : $(hostname)"
 echo "Started : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "============================================"
 
+# Resubmit this scheduler every 10 minutes regardless of outcome.
+trap 'sbatch --begin=now+10minutes "$SLURM_SUBMIT_DIR/pipeline-hpc-poll.sh" || echo "WARNING: resubmit failed — polling stopped"' EXIT
+
 # Check for pending files and submit pipeline array job if any are found.
 "$PROJECT_ROOT/pipeline-hpc-submit.sh"

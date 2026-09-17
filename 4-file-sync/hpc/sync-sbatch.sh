@@ -29,6 +29,7 @@ SIF=/scratch/project_465003209/mcgowank/whisper-sync.sif
 
 # Always submitted from the project root — SLURM_SUBMIT_DIR is the project root.
 PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
+SYNC_SCRIPT="$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"
 
 mkdir -p "$PROJECT_ROOT/sync/input" "$PROJECT_ROOT/sync/output" "$PROJECT_ROOT/logs"
 
@@ -38,6 +39,10 @@ echo "Node     : $(hostname)"
 echo "Started  : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "Root     : $PROJECT_ROOT"
 echo "============================================"
+
+# Resubmit this job on EXIT regardless of success or failure,
+# so the polling chain is never permanently broken by a single error.
+trap 'sbatch --begin=now+5minutes "$SYNC_SCRIPT" || echo "WARNING: resubmit failed — chain stopped"' EXIT
 
 # rclone config lives on the host at ~/.config/rclone/rclone.conf.
 # The rclone/rclone image expects it at /config/rclone/rclone.conf inside the container.
