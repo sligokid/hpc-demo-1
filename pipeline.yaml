@@ -25,3 +25,8 @@ analyze:
   enabled: true
   model: llama3                     # Ollama model name
   ollama_host: localhost:11434      # override per env (e.g. HPC endpoint file)
+
+# --- Embed stage ---
+embed:
+  enabled: true
+  server_url: http://localhost:8765  # embed-server endpoint

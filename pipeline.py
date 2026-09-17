@@ -26,6 +26,7 @@ import json
 import pathlib
 import sys
 
+import requests
 import yaml
 
 PROJECT_ROOT = pathlib.Path(__file__).parent
@@ -42,6 +43,36 @@ def _import_from(module_name: str, file_path: pathlib.Path):
 def _get_transcribe():
     mod = _import_from("infer", PROJECT_ROOT / "2-inference" / "infer.py")
     return mod.transcribe
+
+
+def _get_transcribe_with_segments():
+    mod = _import_from("infer", PROJECT_ROOT / "2-inference" / "infer.py")
+    return mod.transcribe_with_segments
+
+
+def _call_embed(server_url: str, video_id: str, file_path: str, lang: str, segments: list):
+    payload = {
+        "video_id": video_id,
+        "file": file_path,
+        "lang": lang,
+        "chunks": [
+            {
+                "text": s["text"],
+                "timestamp_start": s["start"],
+                "timestamp_end": s["end"],
+            }
+            for s in segments
+        ],
+    }
+    resp = requests.post(f"{server_url}/embed", json=payload, timeout=120)
+    resp.raise_for_status()
+    return resp.json()["indexed"]
+
+
+def _call_metadata(server_url: str, video_id: str, file_path: str, lang: str, analysis: dict):
+    payload = {"video_id": video_id, "file": file_path, "lang": lang, **analysis}
+    resp = requests.post(f"{server_url}/metadata", json=payload, timeout=30)
+    resp.raise_for_status()
 
 
 def _get_analyze():
@@ -103,10 +134,12 @@ def main():
     analyze_enabled = cfg["analyze"].get("enabled", True)
     ollama_host = cfg["analyze"]["ollama_host"]
     analyze_model = cfg["analyze"]["model"]
+    embed_enabled = cfg.get("embed", {}).get("enabled", False)
+    embed_url = cfg.get("embed", {}).get("server_url", "http://localhost:8765")
 
     if args.file:
         audio_path = pathlib.Path(args.file)
-        lang = audio_path.parent.name
+        lang = args.lang if args.lang else audio_path.parent.name
         pending = [(audio_path, lang)]
     else:
         inbox = PROJECT_ROOT / cfg["inbox"]
@@ -121,7 +154,10 @@ def main():
     print(f"Ollama host : {ollama_host}")
     print(f"Files       : {len(pending)}\n")
 
-    transcribe = _get_transcribe() if infer_enabled else None
+    if infer_enabled:
+        transcribe = _get_transcribe_with_segments() if embed_enabled else _get_transcribe()
+    else:
+        transcribe = None
     analyze = _get_analyze() if analyze_enabled else None
 
     errors = 0
@@ -134,9 +170,11 @@ def main():
         analysis_file = out_dir / f"{stem}.analysis.json"
         done_flag = audio_path.parent / (audio_path.name + ".done")
 
+        segments_file = out_dir / f"{stem}.segments.json"
         print(f"[{lang}] {audio_path.name}")
 
         # --- Infer ---
+        segments = None
         if infer_enabled:
             model_dir = checkpoints / lang
             if not model_dir.is_dir():
@@ -144,7 +182,12 @@ def main():
                 errors += 1
                 continue
             try:
-                transcript = transcribe(str(model_dir), str(audio_path))
+                if embed_enabled:
+                    transcript, segments = transcribe(str(model_dir), str(audio_path))
+                    segments_file.write_text(json.dumps(segments, indent=2) + "\n")
+                    print(f"  segments   -> {segments_file.relative_to(PROJECT_ROOT)}")
+                else:
+                    transcript = transcribe(str(model_dir), str(audio_path))
             except Exception as exc:
                 print(f"  INFER ERROR — {exc}")
                 errors += 1
@@ -158,8 +201,11 @@ def main():
                 errors += 1
                 continue
             transcript = transcript_file.read_text()
+            if embed_enabled and segments_file.exists():
+                segments = json.loads(segments_file.read_text())
 
         # --- Analyze ---
+        metadata = None
         if analyze_enabled:
             try:
                 metadata = analyze(transcript, analyze_model, ollama_host)
@@ -169,6 +215,18 @@ def main():
                 continue
             analysis_file.write_text(json.dumps(metadata, indent=2) + "\n")
             print(f"  analysis   -> {analysis_file.relative_to(PROJECT_ROOT)}")
+
+        # --- Embed ---
+        if embed_enabled and segments:
+            video_id = f"{lang}/{stem}"
+            try:
+                n = _call_embed(embed_url, video_id, str(audio_path), lang, segments)
+                print(f"  embedded   -> {n} chunks indexed")
+                if metadata:
+                    _call_metadata(embed_url, video_id, str(audio_path), lang, metadata)
+                    print(f"  metadata   -> indexed")
+            except Exception as exc:
+                print(f"  EMBED ERROR — {exc}")
 
         # --- Flag as done ---
         done_flag.touch()
