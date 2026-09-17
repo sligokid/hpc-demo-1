@@ -24,7 +24,8 @@ def call_ollama(prompt, model, ollama_host):
     try:
         response = requests.post(
             url,
-            json={"model": model, "prompt": prompt, "format": "json", "stream": False},
+            json={"model": model, "prompt": prompt, "format": "json", "stream": False,
+              "options": {"num_predict": 512}},
         )
     except requests.exceptions.ConnectionError:
         print(f"Error: could not connect to Ollama at {ollama_host}. Is it running?", file=sys.stderr)
