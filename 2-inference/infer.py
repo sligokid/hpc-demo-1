@@ -55,6 +55,7 @@ def transcribe_with_segments(model_dir: str, audio_path: str, language: Optional
     segments = [
         {"start": float(c["timestamp"][0]), "end": float(c["timestamp"][1]), "text": c["text"]}
         for c in result["chunks"]
+        if c["timestamp"][0] is not None and c["timestamp"][1] is not None
     ]
     return result["text"], segments
 
