@@ -80,6 +80,11 @@ def _get_analyze():
     return mod.analyze
 
 
+def _get_run_sentiment():
+    mod = _import_from("sentiment", PROJECT_ROOT / "5-embed" / "sentiment.py")
+    return mod.run_sentiment, mod._split_text
+
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -136,6 +141,7 @@ def main():
     analyze_model = cfg["analyze"]["model"]
     embed_enabled = cfg.get("embed", {}).get("enabled", False)
     embed_url = cfg.get("embed", {}).get("server_url", "http://localhost:8765")
+    sentiment_enabled = cfg.get("sentiment", {}).get("enabled", False)
 
     if args.file:
         audio_path = pathlib.Path(args.file)
@@ -159,6 +165,8 @@ def main():
     else:
         transcribe = None
     analyze = _get_analyze() if analyze_enabled else None
+    run_sentiment, split_text = (_get_run_sentiment() if sentiment_enabled
+                                 else (None, None))
 
     errors = 0
 
@@ -215,6 +223,18 @@ def main():
                 continue
             analysis_file.write_text(json.dumps(metadata, indent=2) + "\n")
             print(f"  analysis   -> {analysis_file.relative_to(PROJECT_ROOT)}")
+
+        # --- Sentiment ---
+        sentiment_data = {}
+        if sentiment_enabled:
+            try:
+                chunks = segments if segments else split_text(transcript)
+                sentiment_data = run_sentiment(chunks)
+                print(f"  sentiment  -> {sentiment_data}")
+                if metadata is not None:
+                    metadata.update(sentiment_data)
+            except Exception as exc:
+                print(f"  SENTIMENT ERROR — {exc}")
 
         # --- Embed ---
         if embed_enabled and segments:
