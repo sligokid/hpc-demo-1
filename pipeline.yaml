@@ -26,6 +26,10 @@ analyze:
   model: llama3                     # Ollama model name
   ollama_host: localhost:11434      # override per env (e.g. HPC endpoint file)
 
+# --- Sentiment stage (runs between analyze and embed) ---
+sentiment:
+  enabled: true                      # set false to skip (e.g. HPC nodes without GPU)
+
 # --- Embed stage ---
 embed:
   enabled: true

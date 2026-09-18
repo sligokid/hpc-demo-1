@@ -1,0 +1,61 @@
+# Role → tag mapping for playlist ranking.
+# Tags listed here boost relevance when a user's profile role matches.
+
+engineer:
+  - engineering
+  - maintenance
+  - equipment
+  - troubleshooting
+  - safety
+  - inspection
+  - quality
+  - calibration
+  - technical
+
+production_operative:
+  - production
+  - operations
+  - line-start
+  - line-jam
+  - quality
+  - safety
+  - onboarding
+  - process
+  - workflow
+
+manager:
+  - leadership
+  - reporting
+  - compliance
+  - kpi
+  - safety
+  - onboarding
+  - quality
+  - process
+
+health_and_safety:
+  - safety
+  - hazard
+  - ppe
+  - emergency
+  - compliance
+  - risk
+  - inspection
+
+new_hire:
+  - onboarding
+  - safety
+  - orientation
+  - policy
+  - introduction
+  - process
+  - workflow
+
+trainer:
+  - training
+  - onboarding
+  - skills
+  - coaching
+  - safety
+  - quality
+  - assessment
