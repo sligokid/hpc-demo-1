@@ -14,5 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 
 # Install CPU-only torch first, then the remaining deps.
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+# typing_extensions is pre-installed from PyPI to avoid a source build triggered
+# by the inconsistent wheel metadata on the PyTorch index (flit_core not available there).
+RUN pip install --no-cache-dir typing_extensions \
+    && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
     && grep -v "^torch" requirements.txt | pip install --no-cache-dir -r /dev/stdin

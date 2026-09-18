@@ -4,6 +4,27 @@ import sys
 import requests
 
 
+# CONTEXT WINDOW LIMITATION — see issues/003-larger-context-model.md
+#
+# llama3 (8B) has an 8192-token context window. The instruction preamble uses
+# ~300 tokens and num_predict reserves 512, leaving ~7380 tokens for the
+# transcript (~5700 words). At ~1.3 words/token, 3000 words ≈ 2300 tokens —
+# we truncate well before the limit so Ollama never silently drops content.
+#
+# For long videos (>~20 min) the truncation means analyze() only sees the first
+# third of the transcript. To fix properly, swap to a model with a larger
+# context window (e.g. llama3.1:70b at 128k, mistral-nemo at 128k,
+# or gemma2:27b at 8k but better compression) — see the issue for tradeoffs.
+_MAX_TRANSCRIPT_WORDS = 3000
+
+
+def _truncate_transcript(transcript: str) -> str:
+    words = transcript.split()
+    if len(words) <= _MAX_TRANSCRIPT_WORDS:
+        return transcript
+    return " ".join(words[:_MAX_TRANSCRIPT_WORDS]) + "\n[transcript truncated]"
+
+
 def build_prompt(transcript):
     return (
         "You are a learning content analyst. "
@@ -15,7 +36,7 @@ def build_prompt(transcript):
         '- "goals": a list of learning goals (what the viewer will be able to do after watching)\n'
         '- "skills": a list of skills covered\n\n'
         "Transcript:\n"
-        + transcript
+        + _truncate_transcript(transcript)
     )
 
 
@@ -24,7 +45,8 @@ def call_ollama(prompt, model, ollama_host):
     try:
         response = requests.post(
             url,
-            json={"model": model, "prompt": prompt, "format": "json", "stream": False},
+            json={"model": model, "prompt": prompt, "format": "json", "stream": False,
+              "options": {"num_predict": 512}},
         )
     except requests.exceptions.ConnectionError:
         print(f"Error: could not connect to Ollama at {ollama_host}. Is it running?", file=sys.stderr)

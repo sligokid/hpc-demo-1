@@ -104,17 +104,29 @@ whisper-sync/                     4-file-sync/hpc/sync-sbatch.sh (every 5 min)
 ```bash
 cd /scratch/project_465003209/mcgowank/hpc-demo-1
 
-# 1. Start the persistent Ollama GPU service (self-resubmits every 8 hours)
+# 1. Start the persistent Ollama GPU service (self-resubmits every 8 hours) : A-ollama
 sbatch 3-analyze/hpc/2-ollama-serve-sbatch.sh
 
-# 2. Start the file sync loop (polls Google Drive every 5 minutes)
+# 2. Start the file sync loop (polls Google Drive every 5 minutes): B-sync
 sbatch 4-file-sync/hpc/sync-sbatch.sh
 
-# 3. Start the pipeline poller (scans sync/input/ and launches jobs every 10 minutes)
+# 3. Start the pipeline poller (scans sync/input/ and launches jobs every 10 minutes): C-poll
 sbatch pipeline-hpc-poll.sh
 ```
 
+#### A-ollama, B-sync, C-poll should be running permanently and pipeline job(s) will appear when files are detected
+```
+Every 2.0s: squeue --me                                                  uan18: Wed Sep 16 18:04:21 2026
+
+             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
+          22100106     small   C-poll mcgowank PD       0:00      1 (BeginTime)
+          22100150     small   B-sync mcgowank PD       0:00      1 (BeginTime)
+          22100084   small-g A-ollama mcgowank  R       5:45      1 nid005030
+```
+
 > **Note:** Wait for the Ollama job to move from `PD` (pending) to `R` (running) and write `/scratch/project_465003209/mcgowank/ollama.endpoint` before processing starts.
+
+> **FIXME:** There is a race condition between C-poll and the launched pipeline jobs where duplicate jobs are submitted if the file processing has not completed before the next poll. This is relatively harmless as the longer running file will eventually finish and set the .done file. Howver it could become a poison pill for the GPU resources if there's a run away pipeline job. 
 
 ### 2. Manual Batch Submission (On-Demand)
 
