@@ -1,8 +1,52 @@
-# Embed & Search — Semantic video retrieval
+# 5-embed — Sentiment, Embedding, Indexing & Semantic Search
 
-`embed-server.py` loads `intfloat/multilingual-e5-large` once and indexes transcript chunks into a local Qdrant instance. `search.py` (project root) queries those chunks and returns timestamped results.
+This folder covers **Stages 4 and 5** of the SLICK+ pipeline — sentiment scoring and vector indexing. Together they transform transcript segments and Ollama-extracted metadata into a searchable, sentiment-aware knowledge base.
+
+### Stage 4 — Sentiment (`sentiment.py`)
+
+After `analyze.py` produces `analysis.json`, `pipeline.py` passes the transcript segments to `sentiment.py`. It scores the full transcript using `cardiffnlp/twitter-xlm-roberta-base-sentiment` (multilingual, no GPU required) and returns a `sentiment_label` (positive / neutral / negative) and a `sentiment_score`. These two fields are merged directly into the metadata dict before it is sent to Qdrant — so every `video_metadata` record carries sentiment as a first-class payload field.
+
+```
+analyze.py → analysis.json
+                  │
+                  ▼
+            sentiment.py  ← runs on segments (or splits transcript if segments unavailable)
+                  │
+                  ▼
+            metadata + sentiment_label + sentiment_score  → POST /metadata → Qdrant
+```
+
+### Stage 5 — Embed & Index (`embed-server.py`)
+
+`embed-server.py` loads `intfloat/multilingual-e5-large` once at startup and exposes two HTTP endpoints called by `pipeline.py`:
+
+- `POST /embed` — receives the Whisper segment list, encodes each chunk into a 1024-dim vector, upserts into `video_chunks`
+- `POST /metadata` — receives the merged metadata dict (including sentiment fields from Stage 4), stores it in `video_metadata`
+
+Both collections are then queryable by `search.py` and consumed by `6-graph/` to build the knowledge graph and personalised playlists.
+
+**What this enables:**
+- A factory worker searches "how do I clear a jam on line 3" and gets back the exact timestamp in an internal video where a colleague demonstrates the fix — in their own language.
+- A floor manager filters `video_metadata` by `sentiment_label` to spot topics that skew negative across the Arabic-language library.
+- `6-graph/graph.py` colours graph nodes by sentiment; `6-graph/playlist.py` can filter or boost by sentiment label.
+
+**Components:**
+- `sentiment.py` — Stage 4: per-video sentiment scoring, output merged into metadata before indexing
+- `embed-server.py` — Stage 5: HTTP service that embeds chunks and upserts both collections into Qdrant
+- `label.py` — calls Llama 3 to produce JSONL sentiment training data for future fine-tuning (training deferred to Phase 2)
+- `search.py` (project root) — CLI tool that queries `video_chunks` and returns timestamped results
 
 Blocks on: `2-inference/infer.py --segments` (issue 001) — each chunk carries `timestamp_start`/`timestamp_end` from `segments.json`.
+
+### What sentiment adds
+
+**Content routing in playlists.** Sentiment becomes a filter, not just metadata. Onboarding playlists can prefer positive-sentiment videos — upbeat, confident delivery — while risk and compliance training can deliberately surface negative-sentiment content where experienced workers describe what went wrong. Without sentiment, `playlist.py` has no way to make that distinction; it only knows tags.
+
+**Organisational health signal in the graph.** A manager looking at the knowledge graph who sees a cluster of negative-sentiment nodes all tagged `equipment` and `arabic` has a signal they could not get from a flat file system: something about how Arabic-speaking workers talk about equipment is consistently negative. That might mean a knowledge gap, a training failure, a team under stress, or a real safety hazard. No individual employee is flagged — it is an aggregate pattern surfaced without any additional tooling.
+
+**Metadata enrichment that compounds downstream.** Because sentiment is merged into the `video_metadata` payload before indexing, every future tool that reads Qdrant gets it for free — the graph, the playlist, any future search filter, a future insights dashboard. It costs one model pass per video at pipeline time and then it is just a field. If it were added later it would require re-processing every video already in the collection.
+
+**Current limitation.** The model (`twitter-xlm-roberta`) was trained on social media text, not factory floor speech. It will misclassify confident technical language as neutral and understated safety warnings as positive. The `label.py` silver-labelling pipeline exists to generate domain-specific training data to fix this in Phase 2 — but until that fine-tuned model ships, sentiment labels should be treated as directional signals rather than ground truth.
 
 ## How it works
 
