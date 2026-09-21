@@ -6,8 +6,8 @@ Creates video_chunks (1024-dim cosine) and video_metadata (1-dim) collections on
 startup if they do not already exist.
 
 Usage:
-    python 5-embed/embed-server.py
-    python 5-embed/embed-server.py --qdrant-host localhost:6333 --port 8765
+    python 5-embed/embed_server.py
+    python 5-embed/embed_server.py --qdrant-host localhost:6333 --port 8765
 
 Endpoints:
     GET  /health              — liveness check
@@ -71,9 +71,10 @@ def embed():
     texts = [f"passage: {c['text']}" for c in chunks]
     vectors = _model.encode(texts, normalize_embeddings=True)
 
+    # Deterministic IDs so reruns overwrite rather than duplicate.
     points = [
         PointStruct(
-            id=str(uuid.uuid4()),
+            id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{video_id}:{i}")),
             vector=vectors[i].tolist(),
             payload={
                 "video_id": video_id,
@@ -97,8 +98,9 @@ def metadata():
     Response: {"indexed": 1}
     """
     body = request.get_json(force=True)
+    # Deterministic ID keyed on video_id so reruns overwrite rather than duplicate.
     point = PointStruct(
-        id=str(uuid.uuid4()),
+        id=str(uuid.uuid5(uuid.NAMESPACE_URL, body.get("video_id", str(uuid.uuid4())))),
         vector=[0.0],
         payload=body,
     )
