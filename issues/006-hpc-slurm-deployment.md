@@ -8,12 +8,12 @@ Deploy Qdrant and the embedding worker as persistent SLURM service jobs on LUMI,
 
 Deliverables:
 - **`5-embed/hpc/qdrant-serve-sbatch.sh`** — SLURM service job that pulls/runs the Qdrant SIF, exposes port 6333 on the allocated node
-- **`5-embed/hpc/embed-serve-sbatch.sh`** — SLURM service job that runs `embed-server.py` inside the whisper-embed SIF, connects to Qdrant
+- **`5-embed/hpc/embeddings-serve-sbatch.sh`** — SLURM service job that runs `embed-server.py` inside the qdrant-embeddings-api SIF, connects to Qdrant
 
 Also requires building and pushing the amd64 embed-server Docker image and pulling SIFs on LUMI:
 ```bash
-docker buildx build --platform linux/amd64 -t sligokid/whisper-embed:latest --push 5-embed/
-singularity pull /scratch/project_465003209/mcgowank/whisper-embed.sif docker://sligokid/whisper-embed:latest
+docker buildx build --platform linux/amd64 -t sligokid/embeddings-api:latest --push 5-embed/
+singularity pull /scratch/project_465003209/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
 singularity pull /scratch/project_465003209/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
 ```
 
@@ -24,7 +24,7 @@ See PRD: Phase 3 — HPC section and Deliverables #20–21.
 ## Acceptance criteria
 
 - [ ] `sbatch 5-embed/hpc/qdrant-serve-sbatch.sh` starts Qdrant on a SLURM node; dashboard accessible at `:6333`
-- [ ] `sbatch 5-embed/hpc/embed-serve-sbatch.sh` starts embed-server and connects to Qdrant (visible in logs)
+- [ ] `sbatch 5-embed/hpc/embeddings-serve-sbatch.sh` starts embed-server and connects to Qdrant (visible in logs)
 - [ ] Full pipeline processes a real audio file through all 5 stages on GPU nodes
 - [ ] `python search.py` returns results from the HPC-indexed Qdrant collection
 - [ ] `python graph.py` exports `graph.json`; `graph.html` renders correctly when opened from Google Drive
