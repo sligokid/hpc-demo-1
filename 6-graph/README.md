@@ -11,6 +11,8 @@ Query-layer tools that read from the `video_metadata` Qdrant collection and prod
 | `graph.py` | Exports `graph.json` (nodes + edges) and `graph.html` (D3.js viewer) |
 | `graph_template.html` | HTML/JS template rendered by `graph.py` with inline graph data |
 | `playlist.py` | Generates a ranked personalised playlist for a given user profile |
+| `create-playlist-graph.sh` | Local runner — activates the venv and runs `graph.py` + `playlist.py` |
+| `hpc/graph-sbatch.sh` | SLURM batch job — runs the same steps inside Singularity on LUMI |
 | `test_graph.py` | Unit tests for `graph.py` |
 | `test_playlist.py` | Unit tests for `playlist.py` |
 
@@ -30,6 +32,38 @@ Qdrant must be running and the `video_metadata` collection must be populated by 
 ```bash
 docker run -p 6333:6333 qdrant/qdrant
 ```
+
+---
+
+## Running on LUMI (HPC)
+
+Use `hpc/graph-sbatch.sh` instead of `create-playlist-graph.sh`. It reads the Qdrant endpoint written by the `D-qdrant` service job and runs both Python scripts inside the project's Singularity container.
+
+**Prerequisites:** `D-qdrant` service must be running and have written `$SCRATCH/qdrant.endpoint`.
+
+```bash
+# Default — user engineer@org.com, top 10
+sbatch 6-graph/hpc/graph-sbatch.sh
+
+# Custom user / playlist size
+sbatch 6-graph/hpc/graph-sbatch.sh --user operative@org.com --top-n 5
+
+# Sentiment filter
+sbatch 6-graph/hpc/graph-sbatch.sh --user engineer@org.com --sentiment positive
+
+# EU AI Act opt-out
+sbatch 6-graph/hpc/graph-sbatch.sh --no-personalise --user manager@org.com
+```
+
+Outputs land in `sync/output/` (same as the local script):
+
+| Output | Description |
+|---|---|
+| `sync/output/graph.json` | Graph nodes and edges |
+| `sync/output/graph.html` | Self-contained D3.js viewer |
+| `sync/output/playlist-<user>.json` | Ranked playlist for the requested user |
+
+Logs go to `logs/graph-slurm-<jobid>.out`.
 
 ---
 
