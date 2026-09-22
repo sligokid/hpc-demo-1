@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SLICK+ Knowledge Graph</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #1a1a2e; color: #eee; display: flex; flex-direction: column; height: 100vh; }
+  #toolbar { background: #16213e; padding: 10px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #0f3460; }
+  #toolbar h1 { font-size: 1rem; color: #e94560; margin-right: 8px; }
+  #toolbar label { font-size: 0.8rem; color: #aaa; }
+  #toolbar select { background: #0f3460; color: #eee; border: 1px solid #e94560; border-radius: 4px; padding: 2px 6px; font-size: 0.8rem; }
+  #toolbar button { background: #e94560; color: #fff; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem; }
+  #toolbar button:hover { background: #c73652; }
+  #legend { display: flex; gap: 12px; align-items: center; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  #stats { font-size: 0.75rem; color: #aaa; margin-left: auto; }
+  #graph { flex: 1; overflow: hidden; }
+  svg { width: 100%; height: 100%; }
+  .node circle { stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
+  .node circle:hover { stroke-width: 3px; }
+  .node text { font-size: 10px; fill: #ddd; pointer-events: none; }
+  .link { stroke: #4a4a6a; stroke-opacity: 0.6; }
+  #tooltip {
+    position: fixed; background: rgba(22,33,62,0.95); border: 1px solid #0f3460;
+    border-radius: 6px; padding: 8px 12px; font-size: 0.78rem; pointer-events: none;
+    max-width: 260px; display: none; z-index: 100;
+  }
+  #tooltip b { color: #e94560; }
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <h1>SLICK+ Knowledge Graph</h1>
+  <div>
+    <label for="lang-filter">Language</label>
+    <select id="lang-filter">
+      <option value="">All</option>
+      <option value="en">en</option>
+    </select>
+  </div>
+  <div>
+    <label for="uploader-filter">Uploaded by</label>
+    <select id="uploader-filter">
+      <option value="">All</option>
+      
+    </select>
+  </div>
+  <button onclick="applyFilters()">Apply</button>
+  <button onclick="resetFilters()">Reset</button>
+  <div id="legend">
+    <span><span class="legend-dot" style="background:#4caf50"></span>Positive</span>
+    <span><span class="legend-dot" style="background:#90a4ae"></span>Neutral</span>
+    <span><span class="legend-dot" style="background:#f44336"></span>Negative</span>
+  </div>
+  <div id="stats"></div>
+</div>
+<div id="graph"></div>
+<div id="tooltip"></div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const RAW_GRAPH = {"nodes": [{"id": "sligo-triathlon-club-inviting-women-to-try-a-tri.mp3", "label": "Try a Triathlon for Women", "file": "2-inference/audio/sligo-triathlon-club-inviting-women-to-try-a-tri.mp3", "lang": "en", "uploaded_by": "", "tags": ["triathlon", "women's triathlon", "Sligo Triathlon Club", "Try a Triathlon", "fitness", "wellness"], "sentiment_label": "neutral", "sentiment_score": 0.1285, "colour": "#90a4ae"}], "edges": []};
+
+let activeNodes = [];
+let activeEdges = [];
+
+function applyFilters() {
+  const lang = document.getElementById("lang-filter").value;
+  const uploader = document.getElementById("uploader-filter").value;
+  const nodeIds = new Set(
+    RAW_GRAPH.nodes
+      .filter(n => (!lang || n.lang === lang) && (!uploader || n.uploaded_by === uploader))
+      .map(n => n.id)
+  );
+  activeNodes = RAW_GRAPH.nodes.filter(n => nodeIds.has(n.id));
+  activeEdges = RAW_GRAPH.edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+  render(activeNodes, activeEdges);
+}
+
+function resetFilters() {
+  document.getElementById("lang-filter").value = "";
+  document.getElementById("uploader-filter").value = "";
+  activeNodes = [...RAW_GRAPH.nodes];
+  activeEdges = [...RAW_GRAPH.edges];
+  render(activeNodes, activeEdges);
+}
+
+function render(nodes, edges) {
+  document.getElementById("stats").textContent =
+    `${nodes.length} videos · ${edges.length} shared-tag edges`;
+
+  const container = document.getElementById("graph");
+  container.innerHTML = "";
+  const W = container.clientWidth, H = container.clientHeight;
+
+  const svg = d3.select("#graph").append("svg")
+    .attr("viewBox", [0, 0, W, H]);
+
+  const g = svg.append("g");
+
+  svg.call(d3.zoom().scaleExtent([0.2, 4]).on("zoom", e => g.attr("transform", e.transform)));
+
+  // Deep-copy nodes so D3 can mutate x/y
+  const nodeData = nodes.map(n => ({ ...n }));
+  const nodeIndex = Object.fromEntries(nodeData.map(n => [n.id, n]));
+
+  const linkData = edges
+    .map(e => ({ ...e, source: nodeIndex[e.source], target: nodeIndex[e.target] }))
+    .filter(e => e.source && e.target);
+
+  const maxW = edges.length ? Math.max(...edges.map(e => e.weight)) : 1;
+
+  const link = g.append("g").selectAll("line")
+    .data(linkData).join("line")
+    .attr("class", "link")
+    .attr("stroke-width", d => 1 + (d.weight / maxW) * 3);
+
+  const node = g.append("g").selectAll("g")
+    .data(nodeData).join("g")
+    .attr("class", "node")
+    .call(d3.drag()
+      .on("start", (ev, d) => { if (!ev.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on("drag",  (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+      .on("end",   (ev, d) => { if (!ev.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+  node.append("circle")
+    .attr("r", 12)
+    .attr("fill", d => d.colour);
+
+  node.append("text")
+    .attr("dy", 22)
+    .attr("text-anchor", "middle")
+    .text(d => d.label.length > 24 ? d.label.slice(0, 22) + "…" : d.label);
+
+  const tip = document.getElementById("tooltip");
+  node
+    .on("mousemove", (ev, d) => {
+      tip.style.display = "block";
+      tip.style.left = (ev.clientX + 14) + "px";
+      tip.style.top  = (ev.clientY - 10) + "px";
+      tip.innerHTML = `
+        <b>${d.label}</b><br>
+        Lang: ${d.lang || "—"} &nbsp;|&nbsp; By: ${d.uploaded_by || "—"}<br>
+        Sentiment: ${d.sentiment_label} (${(d.sentiment_score * 100).toFixed(0)}%)<br>
+        Tags: ${(d.tags || []).join(", ") || "—"}
+      `;
+    })
+    .on("mouseleave", () => { tip.style.display = "none"; });
+
+  const sim = d3.forceSimulation(nodeData)
+    .force("link", d3.forceLink(linkData).id(d => d.id).distance(120))
+    .force("charge", d3.forceManyBody().strength(-300))
+    .force("center", d3.forceCenter(W / 2, H / 2))
+    .force("collide", d3.forceCollide(20))
+    .on("tick", () => {
+      link
+        .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+      node.attr("transform", d => `translate(${d.x},${d.y})`);
+    });
+}
+
+resetFilters();
+</script>
+</body>
+</html>

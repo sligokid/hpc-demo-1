@@ -23,6 +23,7 @@ Output per file:
 import argparse
 import importlib.util
 import json
+import os
 import pathlib
 import sys
 
@@ -140,7 +141,7 @@ def main():
     ollama_host = cfg["analyze"]["ollama_host"]
     analyze_model = cfg["analyze"]["model"]
     embed_enabled = cfg.get("embed", {}).get("enabled", False)
-    embed_url = cfg.get("embed", {}).get("server_url", "http://localhost:8765")
+    embed_url = os.getenv("EMBEDDING_SERVER_URL", cfg.get("embed", {}).get("server_url", "http://localhost:8765"))
     sentiment_enabled = cfg.get("sentiment", {}).get("enabled", False)
 
     if args.file:
@@ -179,6 +180,7 @@ def main():
         done_flag = audio_path.parent / (audio_path.name + ".done")
 
         segments_file = out_dir / f"{stem}.segments.json"
+        sentiment_file = out_dir / f"{stem}.sentiment.json"
         print(f"[{lang}] {audio_path.name}")
 
         # --- Infer ---
@@ -230,7 +232,8 @@ def main():
             try:
                 chunks = segments if segments else split_text(transcript)
                 sentiment_data = run_sentiment(chunks)
-                print(f"  sentiment  -> {sentiment_data}")
+                sentiment_file.write_text(json.dumps(sentiment_data, indent=2) + "\n")
+                print(f"  sentiment  -> {sentiment_file.relative_to(PROJECT_ROOT)}")
                 if metadata is not None:
                     metadata.update(sentiment_data)
             except Exception as exc:

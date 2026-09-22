@@ -6,4 +6,4 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-python 5-embed/embed-server.py --qdrant-host localhost:6333 --port 8765
+python 5-embed/embed_server.py --qdrant-host localhost:6333 --port 8765
