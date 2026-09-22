@@ -23,18 +23,26 @@ set -euo pipefail
 MANIFEST=${1:?Usage: sbatch --array=0-N pipeline-hpc-sbatch.sh <manifest-file>}
 SCRATCH=/scratch/project_465003209/mcgowank
 SIF=$SCRATCH/whisper-hpc.sif
-ENDPOINT_FILE=$SCRATCH/ollama.endpoint
+OLLAMA_ENDPOINT_FILE=$SCRATCH/ollama.endpoint
+EMBED_ENDPOINT_FILE=$SCRATCH/embed.endpoint
 PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
 
 mkdir -p "$PROJECT_ROOT/logs"
 
-if [ ! -f "$ENDPOINT_FILE" ]; then
-    echo "Error: Ollama endpoint file not found at $ENDPOINT_FILE" >&2
+if [ ! -f "$OLLAMA_ENDPOINT_FILE" ]; then
+    echo "Error: Ollama endpoint file not found at $OLLAMA_ENDPOINT_FILE" >&2
     echo "Start the Ollama service first: sbatch 3-analyze/hpc/2-ollama-serve-sbatch.sh" >&2
     exit 1
 fi
 
-OLLAMA_HOST=$(cat "$ENDPOINT_FILE")
+if [ ! -f "$EMBED_ENDPOINT_FILE" ]; then
+    echo "Error: embed-server endpoint file not found at $EMBED_ENDPOINT_FILE" >&2
+    echo "Start the embed service first: sbatch 5-embed/hpc/embeddings-serve-sbatch.sh" >&2
+    exit 1
+fi
+
+OLLAMA_HOST=$(cat "$OLLAMA_ENDPOINT_FILE")
+EMBED_HOST=$(cat "$EMBED_ENDPOINT_FILE")
 
 # Pick this task's file from the manifest
 mapfile -t FILES < "$MANIFEST"
@@ -50,7 +58,8 @@ AUDIO_CONTAINER="/workspace/$AUDIO_FILE"
 echo "============================================"
 echo "Job       : $SLURM_JOB_ID  Array task: $SLURM_ARRAY_TASK_ID"
 echo "File      : $AUDIO_FILE"
-echo "Endpoint  : $OLLAMA_HOST"
+echo "Ollama    : $OLLAMA_HOST"
+echo "Embed     : $EMBED_HOST"
 echo "============================================"
 
 singularity exec \
@@ -60,6 +69,7 @@ singularity exec \
     bash -c "
 export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
 export MIOPEN_DISABLE_CACHE=1
+export EMBEDDING_SERVER_URL=\"http://${EMBED_HOST}\"
 python /workspace/pipeline.py \
     --config /workspace/pipeline.yaml \
     --file \"$AUDIO_CONTAINER\" \
