@@ -33,7 +33,7 @@ set -euo pipefail
 
 # --- Configuration ---
 SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
-SIF=${SIF:-$SCRATCH/whisper-hpc.sif}
+SIF=${SIF:-$SCRATCH/embeddings-api.sif}
 QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
 # ---------------------
 
