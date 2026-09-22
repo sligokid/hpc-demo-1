@@ -65,7 +65,7 @@ singularity exec \
     "$QDRANT_SIF" \
     bash -c "
         export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
-        ./qdrant
+        /qdrant/qdrant
     " &
 QDRANT_PID=$!
 
