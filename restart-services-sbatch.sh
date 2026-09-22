@@ -11,7 +11,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=1G
-#SBATCH --time=00:05:00
+#SBATCH --time=00:15:00
 #SBATCH --output=logs/restart-slurm-%j.out
 #SBATCH --error=logs/restart-slurm-%j.err
 
