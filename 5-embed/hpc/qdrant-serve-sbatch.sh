@@ -34,7 +34,13 @@ QDRANT_STORAGE_DIR=$SCRATCH/qdrant-storage
 ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
 # ----------------------------------
 
-PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
+# Resolve project root whether sbatch was called from the project root or
+# from within 5-embed/hpc/.
+if [ -f "$SLURM_SUBMIT_DIR/pipeline.yaml" ]; then
+    PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
+else
+    PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
+fi
 mkdir -p "$PROJECT_ROOT/logs" "$QDRANT_STORAGE_DIR"
 
 echo "============================================"

@@ -37,7 +37,13 @@ QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
 EMBED_ENDPOINT_FILE=$SCRATCH/embed.endpoint
 # ----------------------------------
 
-PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
+# Resolve project root whether sbatch was called from the project root or
+# from within 5-embed/hpc/.
+if [ -f "$SLURM_SUBMIT_DIR/pipeline.yaml" ]; then
+    PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
+else
+    PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
+fi
 mkdir -p "$PROJECT_ROOT/logs"
 
 # Fail fast if the Qdrant service is not running

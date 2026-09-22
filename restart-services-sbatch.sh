@@ -39,7 +39,8 @@ echo "Waiting 2 minutes for services to die..."
 sleep 120
 
 echo "Submitting B-ollama..."
-sbatch "$PROJECT_ROOT/3-analyze/hpc/2-ollama-serve-sbatch.sh"
+OLLAMA_JID=$(sbatch --parsable "$PROJECT_ROOT/3-analyze/hpc/2-ollama-serve-sbatch.sh")
+echo "  Job ID: $OLLAMA_JID"
 echo "Waiting 2 minutes for B-ollama to start..."
 sleep 120
 
@@ -47,14 +48,17 @@ echo "Submitting C-sync..."
 sbatch "$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"
 
 echo "Submitting D-qdrant..."
-sbatch "$PROJECT_ROOT/5-embed/hpc/qdrant-serve-sbatch.sh"
-echo "Waiting 2 minutes for D-qdrant to start..."
+QDRANT_JID=$(sbatch --parsable "$PROJECT_ROOT/5-embed/hpc/qdrant-serve-sbatch.sh")
+echo "  Job ID: $QDRANT_JID"
+echo "Waiting 2 minutes for D-qdrant to write endpoint file..."
 sleep 120
 
 echo "Submitting E-embed..."
-sbatch "$PROJECT_ROOT/5-embed/hpc/embeddings-serve-sbatch.sh"
+EMBED_JID=$(sbatch --parsable "$PROJECT_ROOT/5-embed/hpc/embeddings-serve-sbatch.sh")
+echo "  Job ID: $EMBED_JID"
 
-echo "Submitting Z-poll..."
-sbatch "$PROJECT_ROOT/pipeline-hpc-poll.sh"
+# Z-poll must not start until Ollama, Qdrant, and the embed server are all running.
+echo "Submitting Z-poll (depends on B-ollama:$OLLAMA_JID, D-qdrant:$QDRANT_JID, E-embed:$EMBED_JID)..."
+sbatch --dependency=after:${OLLAMA_JID}:${QDRANT_JID}:${EMBED_JID} "$PROJECT_ROOT/pipeline-hpc-poll.sh"
 
 echo "Done. Next restart scheduled in 12 hours."
