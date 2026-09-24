@@ -48,13 +48,13 @@ echo "Submitting C-sync..."
 sbatch "$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"
 
 echo "Submitting D-qdrant..."
-QDRANT_JID=$(sbatch --parsable "$PROJECT_ROOT/5-embed/hpc/qdrant-serve-sbatch.sh")
+QDRANT_JID=$(sbatch --parsable "$PROJECT_ROOT/5-embed/hpc/1-qdrant-serve-sbatch.sh")
 echo "  Job ID: $QDRANT_JID"
 echo "Waiting 2 minutes for D-qdrant to write endpoint file..."
 sleep 120
 
 echo "Submitting E-embed..."
-EMBED_JID=$(sbatch --parsable "$PROJECT_ROOT/5-embed/hpc/embeddings-serve-sbatch.sh")
+EMBED_JID=$(sbatch --parsable "$PROJECT_ROOT/5-embed/hpc/2-embeddings-serve-sbatch.sh")
 echo "  Job ID: $EMBED_JID"
 
 # Z-poll must not start until Ollama, Qdrant, and the embed server are all running.
