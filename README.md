@@ -102,7 +102,7 @@ whisper-sync/                     4-file-sync/hpc/sync-sbatch.sh (every 5 min)
 **Prerequisites:** Singularity containers built in scratch (`whisper-hpc.sif`, `whisper-sync.sif`, `ollama.sif`) and rclone config copied to `~/.config/rclone/rclone.conf`.
 
 ```bash
-cd /scratch/project_465003209/mcgowank/hpc-demo-1
+cd /scratch/project_465003359/mcgowank/hpc-demo-1
 
 # 1. Start the persistent Ollama GPU service (self-resubmits every 8 hours) : A-ollama
 sbatch 3-analyze/hpc/2-ollama-serve-sbatch.sh
@@ -124,7 +124,7 @@ Every 2.0s: squeue --me                                                  uan18: 
           22100084   small-g A-ollama mcgowank  R       5:45      1 nid005030
 ```
 
-> **Note:** Wait for the Ollama job to move from `PD` (pending) to `R` (running) and write `/scratch/project_465003209/mcgowank/ollama.endpoint` before processing starts.
+> **Note:** Wait for the Ollama job to move from `PD` (pending) to `R` (running) and write `/scratch/project_465003359/mcgowank/ollama.endpoint` before processing starts.
 
 > **FIXME:** There is a race condition between C-poll and the launched pipeline jobs where duplicate jobs are submitted if the file processing has not completed before the next poll. This is relatively harmless as the longer running file will eventually finish and set the .done file. Howver it could become a poison pill for the GPU resources if there's a run away pipeline job. 
 
@@ -221,7 +221,7 @@ mkdir -p /tmp/$USER
 export SINGULARITY_TMPDIR=/tmp/$USER
 export SINGULARITY_CACHEDIR=/tmp/$USER
 
-singularity pull /scratch/project_465003209/mcgowank/whisper-hpc.sif docker://sligokid/whisper-hpc:latest
+singularity pull /scratch/project_465003359/mcgowank/whisper-hpc.sif docker://sligokid/whisper-hpc:latest
 ```
 
 ### 3. Build & Convert Cloud Sync Image (`whisper-sync`)
@@ -231,13 +231,13 @@ singularity pull /scratch/project_465003209/mcgowank/whisper-hpc.sif docker://sl
 docker buildx build --platform linux/amd64 -t sligokid/whisper-sync:latest --push 4-file-sync/
 
 # Pull SIF on LUMI
-singularity pull /scratch/project_465003209/mcgowank/whisper-sync.sif docker://sligokid/whisper-sync:latest
+singularity pull /scratch/project_465003359/mcgowank/whisper-sync.sif docker://sligokid/whisper-sync:latest
 ```
 
 ### 4. Pull Ollama ROCm SIF (HPC) Image (`ollama`)
 
 ```bash
-singularity pull /scratch/project_465003209/mcgowank/ollama.sif docker://ollama/ollama:rocm
+singularity pull /scratch/project_465003359/mcgowank/ollama.sif docker://ollama/ollama:rocm
 ```
 
 ---

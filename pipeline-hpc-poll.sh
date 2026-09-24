@@ -16,7 +16,7 @@
 
 #SBATCH --job-name=Z-poll
 #SBATCH --partition=small
-#SBATCH --account=project_465003209
+#SBATCH --account=project_465003359
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=1G

@@ -52,7 +52,7 @@ mkdir -p /tmp/$USER
 export SINGULARITY_TMPDIR=/tmp/$USER
 export SINGULARITY_CACHEDIR=/tmp/$USER
 singularity pull ollama.sif docker://ollama/ollama:rocm
-mv ollama.sif /scratch/project_465003209/$USER/
+mv ollama.sif /scratch/project_465003359/$USER/
 ```
 
 #### Step 1 — pull model weights into scratch

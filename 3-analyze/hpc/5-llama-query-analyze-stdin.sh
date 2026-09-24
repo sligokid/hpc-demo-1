@@ -5,7 +5,7 @@
 #   ./5-llama-query-analyze-stdin.sh
 
 REPO_ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-SCRATCH=/scratch/project_465003209/mcgowank
+SCRATCH=/scratch/project_465003359/mcgowank
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
 MODEL=${MODEL:-llama3}
