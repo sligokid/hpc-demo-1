@@ -15,17 +15,20 @@
 #SBATCH --time=02:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --output=logs/%A_%a.out
-#SBATCH --account=project_465003209
 #SBATCH --partition=small-g
 
 set -euo pipefail
 
 MANIFEST=${1:?Usage: sbatch --array=0-N pipeline-hpc-sbatch.sh <manifest-file>}
-SCRATCH=/scratch/project_465003209/mcgowank
+PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
+
+# Load site config (.env — never committed)
+[ -f "$PROJECT_ROOT/.env" ] && source "$PROJECT_ROOT/.env"
+
+SCRATCH=${HPC_SCRATCH:?".env must define HPC_SCRATCH"}
 SIF=$SCRATCH/whisper-hpc.sif
 OLLAMA_ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 EMBED_ENDPOINT_FILE=$SCRATCH/embed.endpoint
-PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
 
 mkdir -p "$PROJECT_ROOT/logs"
 

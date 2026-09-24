@@ -16,6 +16,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+# Load site config (.env — never committed)
+[ -f ".env" ] && source ".env"
+
 DEPENDENCY=""
 LANG_FILTER=""
 INBOX=$(grep '^inbox:' pipeline.yaml | awk '{print $2}')
@@ -61,6 +64,7 @@ echo ""
 
 # shellcheck disable=SC2086
 JID=$(sbatch \
+    --account="${HPC_ACCOUNT:?}" \
     --array=0-$((N - 1)) \
     $DEPENDENCY \
     pipeline-hpc-sbatch.sh "$MANIFEST" \

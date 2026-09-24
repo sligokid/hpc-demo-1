@@ -5,7 +5,9 @@
 #   ./5-llama-query-analyze-stdin.sh
 
 REPO_ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-SCRATCH=/scratch/project_465003209/mcgowank
+# Load site config (.env — never committed)
+[ -f "$REPO_ROOT/.env" ] && source "$REPO_ROOT/.env"
+SCRATCH=${HPC_SCRATCH:?".env must define HPC_SCRATCH"}
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
 MODEL=${MODEL:-llama3}

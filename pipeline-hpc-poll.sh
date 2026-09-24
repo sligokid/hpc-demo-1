@@ -16,7 +16,6 @@
 
 #SBATCH --job-name=Z-poll
 #SBATCH --partition=small
-#SBATCH --account=project_465003209
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=1G
@@ -28,6 +27,9 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
 
+# Load site config (.env — never committed)
+[ -f "$PROJECT_ROOT/.env" ] && source "$PROJECT_ROOT/.env"
+
 mkdir -p "$PROJECT_ROOT/logs"
 
 echo "============================================"
@@ -37,7 +39,7 @@ echo "Started : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "============================================"
 
 # Resubmit this scheduler every 10 minutes regardless of outcome.
-trap 'sbatch --begin=now+10minutes "$SLURM_SUBMIT_DIR/pipeline-hpc-poll.sh" || echo "WARNING: resubmit failed — polling stopped"' EXIT
+trap 'sbatch --account="${HPC_ACCOUNT:?}" --begin=now+10minutes "$SLURM_SUBMIT_DIR/pipeline-hpc-poll.sh" || echo "WARNING: resubmit failed — polling stopped"' EXIT
 
 # Check for pending files and submit pipeline array job if any are found.
 "$PROJECT_ROOT/pipeline-hpc-submit.sh"

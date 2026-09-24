@@ -1,4 +1,9 @@
-curl -s -X POST http://$(cat /scratch/project_465003209/mcgowank/ollama.endpoint)/api/generate \
+#!/bin/bash
+PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+[ -f "$PROJECT_ROOT/.env" ] && source "$PROJECT_ROOT/.env"
+SCRATCH=${HPC_SCRATCH:?".env must define HPC_SCRATCH"}
+
+curl -s -X POST http://$(cat "$SCRATCH/ollama.endpoint")/api/generate \
     -H 'Content-Type: application/json' \
     -d '{
       "model": "llama3",

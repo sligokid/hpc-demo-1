@@ -17,7 +17,6 @@
 
 #SBATCH --job-name=C-sync
 #SBATCH --partition=small
-#SBATCH --account=project_465003209
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
@@ -25,10 +24,13 @@
 #SBATCH --output=logs/sync-slurm-%j.out
 #SBATCH --error=logs/sync-slurm-%j.err
 
-SIF=/scratch/project_465003209/mcgowank/whisper-sync.sif
-
 # Always submitted from the project root — SLURM_SUBMIT_DIR is the project root.
 PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
+
+# Load site config (.env — never committed)
+[ -f "$PROJECT_ROOT/.env" ] && source "$PROJECT_ROOT/.env"
+SCRATCH=${HPC_SCRATCH:?".env must define HPC_SCRATCH"}
+SIF=$SCRATCH/whisper-sync.sif
 SYNC_SCRIPT="$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"
 
 mkdir -p "$PROJECT_ROOT/sync/input" "$PROJECT_ROOT/sync/output" "$PROJECT_ROOT/logs"

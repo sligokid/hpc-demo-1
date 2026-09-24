@@ -24,16 +24,23 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/ollama-slurm-%j.out
 #SBATCH --error=logs/ollama-slurm-%j.err
-#SBATCH --account=project_465003209
 #SBATCH --partition=small-g
 
 set -euo pipefail
+
+# Resolve project root and load site config (.env — never committed)
+if [ -f "$SLURM_SUBMIT_DIR/pipeline.yaml" ]; then
+    PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
+else
+    PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
+fi
+[ -f "$PROJECT_ROOT/.env" ] && source "$PROJECT_ROOT/.env"
 
 # --- Configuration (edit here) ---
 WALL_TIME=08:00:00                    # must match #SBATCH --time above
 OLLAMA_PORT=11434
 HEALTH_TIMEOUT=120                    # seconds to wait for Ollama to be ready
-SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
+SCRATCH=${HPC_SCRATCH:?".env must define HPC_SCRATCH"}
 OLLAMA_SIF=${OLLAMA_SIF:-$SCRATCH/ollama.sif}
 OLLAMA_MODELS_DIR=$SCRATCH/ollama-models
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint

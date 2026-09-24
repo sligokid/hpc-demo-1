@@ -2,7 +2,7 @@
 # Persistent Qdrant vector-database service on a GPU node.
 #
 # Pull the SIF once before submitting (from a login node with internet access):
-#   singularity pull /scratch/project_465003209/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
+#   singularity pull "$HPC_SCRATCH/qdrant.sif" docker://qdrant/qdrant:latest
 #
 # Submit:
 #   sbatch 5-embed/hpc/qdrant-serve-sbatch.sh
@@ -20,19 +20,9 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/qdrant-slurm-%j.out
 #SBATCH --error=logs/qdrant-slurm-%j.err
-#SBATCH --account=project_465003209
 #SBATCH --partition=small-g
 
 set -euo pipefail
-
-# --- Configuration (edit here) ---
-QDRANT_PORT=6333
-HEALTH_TIMEOUT=120                    # seconds to wait for Qdrant to be ready
-SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
-QDRANT_SIF=${QDRANT_SIF:-$SCRATCH/qdrant.sif}
-QDRANT_STORAGE_DIR=$SCRATCH/qdrant-storage
-ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
-# ----------------------------------
 
 # Resolve project root whether sbatch was called from the project root or
 # from within 5-embed/hpc/.
@@ -41,6 +31,18 @@ if [ -f "$SLURM_SUBMIT_DIR/pipeline.yaml" ]; then
 else
     PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
 fi
+# Load site config (.env — never committed)
+[ -f "$PROJECT_ROOT/.env" ] && source "$PROJECT_ROOT/.env"
+
+# --- Configuration (edit here) ---
+QDRANT_PORT=6333
+HEALTH_TIMEOUT=120                    # seconds to wait for Qdrant to be ready
+SCRATCH=${HPC_SCRATCH:?".env must define HPC_SCRATCH"}
+QDRANT_SIF=${QDRANT_SIF:-$SCRATCH/qdrant.sif}
+QDRANT_STORAGE_DIR=$SCRATCH/qdrant-storage
+ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
+# ----------------------------------
+
 mkdir -p "$PROJECT_ROOT/logs" "$QDRANT_STORAGE_DIR"
 
 echo "============================================"

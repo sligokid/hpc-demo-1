@@ -21,7 +21,6 @@
 
 #SBATCH --job-name=F-graph
 #SBATCH --partition=small
-#SBATCH --account=project_465003209
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
@@ -31,18 +30,20 @@
 
 set -euo pipefail
 
-# --- Configuration ---
-SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
-SIF=${SIF:-$SCRATCH/embeddings-api.sif}
-QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
-# ---------------------
-
 # Resolve project root whether submitted from the project root or 6-graph/hpc/
 if [ -f "$SLURM_SUBMIT_DIR/pipeline.yaml" ]; then
     PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
 else
     PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
 fi
+# Load site config (.env — never committed)
+[ -f "$PROJECT_ROOT/.env" ] && source "$PROJECT_ROOT/.env"
+
+# --- Configuration ---
+SCRATCH=${HPC_SCRATCH:?".env must define HPC_SCRATCH"}
+SIF=${SIF:-$SCRATCH/embeddings-api.sif}
+QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
+# ---------------------
 
 mkdir -p "$PROJECT_ROOT/logs" "$PROJECT_ROOT/sync/output"
 
