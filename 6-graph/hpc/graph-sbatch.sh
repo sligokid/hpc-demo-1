@@ -21,7 +21,7 @@
 
 #SBATCH --job-name=F-graph
 #SBATCH --partition=small
-#SBATCH --account=project_465003209
+#SBATCH --account=project_465003359
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
@@ -32,7 +32,7 @@
 set -euo pipefail
 
 # --- Configuration ---
-SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
+SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 SIF=${SIF:-$SCRATCH/embeddings-api.sif}
 QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
 # ---------------------

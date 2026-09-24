@@ -2,7 +2,7 @@
 # Persistent Qdrant vector-database service on a GPU node.
 #
 # Pull the SIF once before submitting (from a login node with internet access):
-#   singularity pull /scratch/project_465003209/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
+#   singularity pull /scratch/project_465003359/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
 #
 # Submit:
 #   sbatch 5-embed/hpc/qdrant-serve-sbatch.sh
@@ -20,7 +20,7 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/qdrant-slurm-%j.out
 #SBATCH --error=logs/qdrant-slurm-%j.err
-#SBATCH --account=project_465003209
+#SBATCH --account=project_465003359
 #SBATCH --partition=small-g
 
 set -euo pipefail
@@ -28,7 +28,7 @@ set -euo pipefail
 # --- Configuration (edit here) ---
 QDRANT_PORT=6333
 HEALTH_TIMEOUT=120                    # seconds to wait for Qdrant to be ready
-SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
+SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 QDRANT_SIF=${QDRANT_SIF:-$SCRATCH/qdrant.sif}
 QDRANT_STORAGE_DIR=$SCRATCH/qdrant-storage
 ENDPOINT_FILE=$SCRATCH/qdrant.endpoint

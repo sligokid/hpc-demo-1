@@ -225,8 +225,8 @@ docker buildx build --platform linux/amd64 -t sligokid/embeddings-api:latest --p
 Run once from a LUMI login node with internet access:
 
 ```bash
-singularity pull /scratch/project_465003209/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
-singularity pull /scratch/project_465003209/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
+singularity pull /scratch/project_465003359/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
+singularity pull /scratch/project_465003359/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
 ```
 
 ### Step 3 — start the services

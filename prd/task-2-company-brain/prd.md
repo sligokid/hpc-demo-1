@@ -132,8 +132,8 @@ Deploy to LUMI using the established Singularity SIF + SLURM service job pattern
 docker buildx build --platform linux/amd64 -t sligokid/whisper-embed:latest --push 5-embed/
 
 # Pull SIFs on LUMI
-singularity pull /scratch/project_465003209/mcgowank/whisper-embed.sif docker://sligokid/whisper-embed:latest
-singularity pull /scratch/project_465003209/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
+singularity pull /scratch/project_465003359/mcgowank/whisper-embed.sif docker://sligokid/whisper-embed:latest
+singularity pull /scratch/project_465003359/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
 ```
 
 **Verification checklist:**

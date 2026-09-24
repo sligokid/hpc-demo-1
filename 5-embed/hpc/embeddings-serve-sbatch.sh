@@ -5,7 +5,7 @@
 # Prerequisites:
 #   1. qdrant-serve-sbatch.sh is running and has written the endpoint file
 #   2. SIFs are pulled:
-#      singularity pull /scratch/project_465003209/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
+#      singularity pull /scratch/project_465003359/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
 #
 # Submit:
 #   sbatch 5-embed/hpc/embeddings-serve-sbatch.sh
@@ -23,7 +23,7 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/embed-slurm-%j.out
 #SBATCH --error=logs/embed-slurm-%j.err
-#SBATCH --account=project_465003209
+#SBATCH --account=project_465003359
 #SBATCH --partition=small-g
 
 set -euo pipefail
@@ -31,7 +31,7 @@ set -euo pipefail
 # --- Configuration (edit here) ---
 EMBED_PORT=8765
 HEALTH_TIMEOUT=180                    # seconds to wait for model load + server ready
-SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
+SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 EMBEDDINGS_SIF=${EMBEDDINGS_SIF:-$SCRATCH/embeddings-api.sif}
 QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
 EMBED_ENDPOINT_FILE=$SCRATCH/embed.endpoint

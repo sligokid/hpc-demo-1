@@ -13,8 +13,8 @@ Deliverables:
 Also requires building and pushing the amd64 embed-server Docker image and pulling SIFs on LUMI:
 ```bash
 docker buildx build --platform linux/amd64 -t sligokid/embeddings-api:latest --push 5-embed/
-singularity pull /scratch/project_465003209/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
-singularity pull /scratch/project_465003209/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
+singularity pull /scratch/project_465003359/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
+singularity pull /scratch/project_465003359/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
 ```
 
 Follow existing HPC script conventions from `CLAUDE.md`: use `SLURM_SUBMIT_DIR` for project root in sbatch scripts, bind project root as `/workspace`, use `bash -c "..."` wrapper for Singularity calls.
