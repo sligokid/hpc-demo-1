@@ -11,7 +11,7 @@ set -euo pipefail
 
 TRANSCRIPT=${1:?Usage: analyze-on-gpu.sh <transcript-file>}
 
-SCRATCH=/scratch/project_465003209/mcgowank
+SCRATCH=/scratch/project_465003359/mcgowank
 PROJECT_ROOT="$(cd "$PWD/../.." && pwd)"
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 #WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
@@ -32,7 +32,7 @@ echo "Endpoint   : $OLLAMA_HOST"
 echo "Model      : $MODEL"
 
 srun \
-    --account project_465003209 \
+    --account project_465003359 \
     --partition small-g \
     --time 00:30:00 \
     --ntasks 1 \

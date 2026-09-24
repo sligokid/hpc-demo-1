@@ -5,7 +5,7 @@
 #
 # Step 1 — build the Singularity image (once per cluster):
 #   singularity pull ollama.sif docker://ollama/ollama:rocm
-#   mv ollama.sif /scratch/project_465003209/mcgowank/
+#   mv ollama.sif /scratch/project_465003359/mcgowank/
 #
 # Step 2 — start the Ollama service (must be running before this script):
 #   sbatch ollama-serve.sh
@@ -22,7 +22,7 @@ set -euo pipefail
 
 MODEL=${1:-llama3}
 
-SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
+SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 OLLAMA_SIF=${OLLAMA_SIF:-$SCRATCH/ollama.sif}
 OLLAMA_MODELS_DIR=$SCRATCH/ollama-models
 

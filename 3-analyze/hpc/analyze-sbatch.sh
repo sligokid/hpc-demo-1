@@ -20,7 +20,7 @@
 #SBATCH --mem=4G
 #SBATCH --time=01:00:00
 #SBATCH --output=logs/%A_%a.out
-#SBATCH --account=project_465003209
+#SBATCH --account=project_465003359
 #SBATCH --partition=small-g
 
 set -euo pipefail
@@ -29,7 +29,7 @@ set -euo pipefail
 #MODEL=${MODEL:-llama3.1:8b}
 MODEL=${MODEL:-llama3}
 TRANSCRIPT_DIR=${1:?Usage: sbatch analyze-batch.sh <transcript-folder>}
-SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
+SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 #WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}
 WHISPER_SIF=${WHISPER_SIF:-$SCRATCH/whisper-hpc.sif}

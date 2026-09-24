@@ -15,13 +15,13 @@
 #SBATCH --time=02:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --output=logs/%A_%a.out
-#SBATCH --account=project_465003209
+#SBATCH --account=project_465003359
 #SBATCH --partition=small-g
 
 set -euo pipefail
 
 MANIFEST=${1:?Usage: sbatch --array=0-N pipeline-hpc-sbatch.sh <manifest-file>}
-SCRATCH=/scratch/project_465003209/mcgowank
+SCRATCH=/scratch/project_465003359/mcgowank
 SIF=$SCRATCH/whisper-hpc.sif
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"

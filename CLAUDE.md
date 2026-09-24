@@ -70,7 +70,7 @@ python infer.py --model_dir checkpoints/es --audio path/to/audio.wav
 
 Then bind with `--bind "$PROJECT_ROOT:/workspace"` instead of `--bind "$PWD:/workspace"`.
 
-**SIF location:** `whisper-hpc.sif` lives at `/scratch/project_465003209/mcgowank/whisper-hpc.sif` (not inside the project directory).
+**SIF location:** `whisper-hpc.sif` lives at `/scratch/project_465003359/mcgowank/whisper-hpc.sif` (not inside the project directory).
 
 ## Extending
 

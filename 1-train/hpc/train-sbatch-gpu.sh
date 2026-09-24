@@ -28,7 +28,7 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/%A_%a.out      # logs/jobid_arrayindex.out
 #SBATCH --error=logs/%A_%a.err
-#SBATCH --account=project_465003209
+#SBATCH --account=project_465003359
 #SBATCH --partition=small-g
 
 # Language list — index must match --array range
@@ -45,14 +45,14 @@ echo "============================================"
 
 # Path to the Singularity image (pull once with: singularity pull whisper-hpc.sif docker://ghcr.io/YOUR_ORG/whisper-hpc:latest)
 #SIF=${SIF:-$HOME/whisper-hpc.sif}
-SIF=/scratch/project_465003209/mcgowank/whisper-hpc.sif
+SIF=/scratch/project_465003359/mcgowank/whisper-hpc.sif
 
 # SLURM_SUBMIT_DIR is the directory sbatch was run from — go up two levels to project root
 PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR/../.." && pwd)"
 
 # Shared HuggingFace dataset cache — avoids re-downloading FLEURS across all 5 jobs
 #HF_CACHE=${HF_CACHE:-/scratch/$USER/hf_cache}
-HF_CACHE=${HF_CACHE:-/scratch/project_465003209/mcgowank/hf_cache}
+HF_CACHE=${HF_CACHE:-/scratch/project_465003359/mcgowank/hf_cache}
 mkdir -p "$HF_CACHE" "$PROJECT_ROOT/logs" "$PROJECT_ROOT/checkpoints/$LANG"
 
 # rocm/6.1 host drivers must be visible for --rocm to work; load if your cluster uses modules

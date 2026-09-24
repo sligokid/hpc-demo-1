@@ -17,7 +17,7 @@
 
 #SBATCH --job-name=B-sync
 #SBATCH --partition=small
-#SBATCH --account=project_465003209
+#SBATCH --account=project_465003359
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
@@ -25,7 +25,7 @@
 #SBATCH --output=logs/sync-slurm-%j.out
 #SBATCH --error=logs/sync-slurm-%j.err
 
-SIF=/scratch/project_465003209/mcgowank/whisper-sync.sif
+SIF=/scratch/project_465003359/mcgowank/whisper-sync.sif
 
 # Always submitted from the project root — SLURM_SUBMIT_DIR is the project root.
 PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
