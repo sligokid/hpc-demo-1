@@ -1,6 +1,6 @@
 # Training — Multilingual Whisper Fine-Tuning
 
-Fine-tunes `openai/whisper-small` on [Google FLEURS](https://huggingface.co/datasets/google/fleurs) across five languages simultaneously using a SLURM job array on HPC GPU infrastructure.
+Fine-tunes a pretrained speech recognition model `openai/whisper-small` on [Google FLEURS](https://huggingface.co/datasets/google/fleurs) dataset across five languages simultaneously using a SLURM job array on HPC GPU infrastructure.
 
 ## Languages
 

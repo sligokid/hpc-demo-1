@@ -2,7 +2,8 @@
 
 **Goal: Turning speech & video into machine-readable knowledge at HPC scale.**
 
-Fine-tunes `openai/whisper-small` on [Google FLEURS](https://huggingface.co/datasets/google/fleurs) across five languages simultaneously using SLURM GPU job arrays on HPC infrastructure, transcribes audio/video files, extracts structured JSON metadata via Llama 3 (Ollama), and synchronises files bi-directionally with Google Drive (or GCS/S3) via rclone.
+
+
 
 ```
   ┌─────────────────────────────────────────────────────────┐
