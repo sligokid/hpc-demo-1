@@ -33,6 +33,8 @@ services:
       - "6334:6334"
     volumes:
       - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__MAX_REQUEST_SIZE_MB=256
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "bash -c ':>/dev/tcp/localhost/6333' 2>/dev/null"]

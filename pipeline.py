@@ -63,7 +63,7 @@ def _call_embed(server_url: str, segments: list) -> list:
             for s in segments
         ],
     }
-    resp = requests.post(f"{server_url}/embed", json=payload, timeout=120)
+    resp = requests.post(f"{server_url}/embed", json=payload, timeout=600)
     resp.raise_for_status()
     return resp.json()["vectors"]
 

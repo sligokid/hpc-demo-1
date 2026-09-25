@@ -69,7 +69,7 @@ def main():
     print(f"Model loaded.")
     print(f"Ready. Listening on :{args.port}")
 
-    app.run(host="0.0.0.0", port=args.port)
+    app.run(host="0.0.0.0", port=args.port, threaded=True)
 
 
 if __name__ == "__main__":
