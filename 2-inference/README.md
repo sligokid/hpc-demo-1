@@ -37,6 +37,8 @@ bash infer.sh
 
 ### HPC — Singularity (AMD/ROCm)
 
+Pull the SIF file first: see `../../update-sifs.sh`
+
 Run from the project root:
 
 ```bash
