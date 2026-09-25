@@ -74,5 +74,5 @@ python /workspace/pipeline.py \
     --config /workspace/pipeline.yaml \
     --file \"$AUDIO_CONTAINER\" \
     --ollama-host \"$OLLAMA_HOST\" \
-    --analyze-model llama3.1:8b
+    --analyze-model llama3
 "
