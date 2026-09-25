@@ -37,9 +37,9 @@ docker run -p 6333:6333 qdrant/qdrant
 
 ## Running on LUMI (HPC)
 
-Use `hpc/graph-sbatch.sh` instead of `create-playlist-graph.sh`. It reads the Qdrant endpoint written by the `D-qdrant` service job and runs both Python scripts inside the project's Singularity container.
+Use `hpc/graph-sbatch.sh` instead of `create-playlist-graph.sh`. It reads the Qdrant endpoint written by the `E-qdrant` service job and runs both Python scripts inside the project's Singularity container.
 
-**Prerequisites:** `D-qdrant` service must be running and have written `$SCRATCH/qdrant.endpoint`.
+**Prerequisites:** `E-qdrant` service must be running and have written `$SCRATCH/qdrant.endpoint`.
 
 ```bash
 # Default — user engineer@org.com, top 10

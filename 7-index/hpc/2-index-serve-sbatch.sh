@@ -15,7 +15,7 @@
 #   JID=$(sbatch --parsable 7-index/hpc/1-qdrant-serve-sbatch.sh)
 #   sbatch --dependency=after:$JID 7-index/hpc/2-index-serve-sbatch.sh
 
-#SBATCH --job-name=I-index
+#SBATCH --job-name=F-index
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2

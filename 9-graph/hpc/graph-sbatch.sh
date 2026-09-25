@@ -4,7 +4,7 @@
 # graph.html and a per-user playlist JSON to sync/output/.
 #
 # Prerequisites:
-#   D-qdrant service is running and has written the endpoint file.
+#   E-qdrant service is running and has written the endpoint file.
 #
 # Submit from the project root:
 #   sbatch 6-graph/hpc/graph-sbatch.sh

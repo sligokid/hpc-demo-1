@@ -11,7 +11,7 @@
 #   JID=$(sbatch --parsable 7-index/hpc/1-qdrant-serve-sbatch.sh)
 #   sbatch --dependency=after:$JID 7-index/hpc/2-index-serve-sbatch.sh
 
-#SBATCH --job-name=D-qdrant
+#SBATCH --job-name=E-qdrant
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1

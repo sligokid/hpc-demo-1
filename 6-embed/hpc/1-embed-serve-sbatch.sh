@@ -14,7 +14,7 @@
 #   JID=$(sbatch --parsable 6-embed/hpc/1-embed-serve-sbatch.sh)
 #   sbatch --dependency=after:$JID 7-index/hpc/2-index-serve-sbatch.sh
 
-#SBATCH --job-name=E-embed
+#SBATCH --job-name=D-embed
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
