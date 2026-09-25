@@ -1,17 +1,17 @@
 #!/bin/bash
-# Restart the three persistent services every 12 hours.
+# Restart the five persistent services every 12 hours.
 # Cancels the current service jobs by name, then resubmits them.
 #
 # Submit once from the project root to start the cycle:
 #   sbatch restart-services.sh
 
-#SBATCH --job-name=D-restart
+#SBATCH --job-name=A-restart
 #SBATCH --partition=small
-#SBATCH --account=project_465003209
+#SBATCH --account=project_465003359
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=1G
-#SBATCH --time=00:05:00
+#SBATCH --time=00:15:00
 #SBATCH --output=logs/restart-slurm-%j.out
 #SBATCH --error=logs/restart-slurm-%j.err
 
@@ -31,22 +31,34 @@ trap 'sbatch --begin=now+12hours "$SLURM_SUBMIT_DIR/restart-services-sbatch.sh" 
 
 # Cancel services by name — safe to run inside a SLURM job (does not cancel this job).
 echo "Cancelling service jobs..."
-for job_name in A-ollama B-sync C-poll; do
+for job_name in B-ollama C-sync D-qdrant E-embed Z-poll; do
     scancel --name="$job_name" --user="$USER" 2>/dev/null || true
 done
 
 echo "Waiting 2 minutes for services to die..."
 sleep 120
 
-echo "Submitting A-ollama..."
-sbatch "$PROJECT_ROOT/3-analyze/hpc/2-ollama-serve-sbatch.sh"
-echo "Waiting 2 minutes for A-ollama to start..."
+echo "Submitting B-ollama..."
+OLLAMA_JID=$(sbatch --parsable "$PROJECT_ROOT/3-analyze/hpc/2-ollama-serve-sbatch.sh")
+echo "  Job ID: $OLLAMA_JID"
+echo "Waiting 2 minutes for B-ollama to start..."
 sleep 120
 
-echo "Submitting B-sync..."
+echo "Submitting C-sync..."
 sbatch "$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"
 
-echo "Submitting C-poll..."
-sbatch "$PROJECT_ROOT/pipeline-hpc-poll.sh"
+echo "Submitting D-qdrant..."
+QDRANT_JID=$(sbatch --parsable "$PROJECT_ROOT/5-embed/hpc/1-qdrant-serve-sbatch.sh")
+echo "  Job ID: $QDRANT_JID"
+echo "Waiting 2 minutes for D-qdrant to write endpoint file..."
+sleep 120
+
+echo "Submitting E-embed..."
+EMBED_JID=$(sbatch --parsable "$PROJECT_ROOT/5-embed/hpc/2-embeddings-serve-sbatch.sh")
+echo "  Job ID: $EMBED_JID"
+
+# Z-poll must not start until Ollama, Qdrant, and the embed server are all running.
+echo "Submitting Z-poll (depends on B-ollama:$OLLAMA_JID, D-qdrant:$QDRANT_JID, E-embed:$EMBED_JID)..."
+sbatch --dependency=after:${OLLAMA_JID}:${QDRANT_JID}:${EMBED_JID} "$PROJECT_ROOT/pipeline-hpc-poll.sh"
 
 echo "Done. Next restart scheduled in 12 hours."

@@ -15,7 +15,7 @@
 # compatible with the cluster driver before running in production.
 # Check with: singularity run ollama.sif -- rocm-smi --version
 
-#SBATCH --job-name=A-ollama
+#SBATCH --job-name=B-ollama
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
@@ -24,7 +24,7 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/ollama-slurm-%j.out
 #SBATCH --error=logs/ollama-slurm-%j.err
-#SBATCH --account=project_465003209
+#SBATCH --account=project_465003359
 #SBATCH --partition=small-g
 
 set -euo pipefail
@@ -33,7 +33,7 @@ set -euo pipefail
 WALL_TIME=08:00:00                    # must match #SBATCH --time above
 OLLAMA_PORT=11434
 HEALTH_TIMEOUT=120                    # seconds to wait for Ollama to be ready
-SCRATCH=${SCRATCH:-/scratch/project_465003209/mcgowank}
+SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 OLLAMA_SIF=${OLLAMA_SIF:-$SCRATCH/ollama.sif}
 OLLAMA_MODELS_DIR=$SCRATCH/ollama-models
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint

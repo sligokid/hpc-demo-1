@@ -1,4 +1,4 @@
-SCRATCH=/scratch/project_465003209/mcgowank
+SCRATCH=/scratch/project_465003359/mcgowank
 OLLAMA_SIF=${OLLAMA_SIF:-$SCRATCH/ollama.sif}
 
 singularity pull $OLLAMA_SIF docker://ollama/ollama:rocm

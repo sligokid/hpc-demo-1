@@ -210,6 +210,44 @@ pytest test_search.py
 
 No model weights or running services required — all external deps are mocked.
 
+## Running on HPC (LUMI)
+
+### Step 1 — build and push the amd64 Docker image
+
+Run once from a machine with Docker Buildx (e.g. your laptop or a CI runner):
+
+```bash
+docker buildx build --platform linux/amd64 -t sligokid/embeddings-api:latest --push -f 5-embed/docker/Dockerfile .
+```
+
+### Step 2 — pull SIFs on LUMI
+
+Run once from a LUMI login node with internet access:
+
+```bash
+singularity pull /scratch/project_465003359/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
+singularity pull /scratch/project_465003359/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
+```
+
+### Step 3 — start the services
+
+Submit from the project root. Qdrant must be running before the embed server starts so its endpoint file is present:
+
+```bash
+JID=$(sbatch --parsable 5-embed/hpc/qdrant-serve-sbatch.sh)
+sbatch --dependency=after:$JID 5-embed/hpc/embeddings-serve-sbatch.sh
+```
+
+Or let `restart-services-sbatch.sh` manage the full service lifecycle (it waits 2 minutes for Qdrant before submitting the embed server):
+
+```bash
+sbatch restart-services-sbatch.sh
+```
+
+Monitor with `squeue -u $USER`. Logs at `logs/qdrant-slurm-<jobid>.out` and `logs/embed-slurm-<jobid>.out`.
+
+The Qdrant service writes `$SCRATCH/qdrant.endpoint` (`hostname:6333`) when ready; the embed server reads it to connect. The embed server writes `$SCRATCH/embed.endpoint` (`hostname:8765`) when warm.
+
 ## Files
 
 | File | Role |
@@ -218,6 +256,8 @@ No model weights or running services required — all external deps are mocked.
 | `local/1-start-qdrant.sh` | Start Qdrant via Docker |
 | `local/2-start-embed-server.sh` | Start embed-server.py |
 | `local/3-run-pipeline.sh` | End-to-end pipeline run on a sample file |
+| `hpc/qdrant-serve-sbatch.sh` | SLURM service job — runs Qdrant SIF on a GPU node (D-qdrant) |
+| `hpc/embeddings-serve-sbatch.sh` | SLURM service job — runs embed-server inside the embeddings-api SIF (E-embed) |
 | `test_embed_server.py` | Unit tests for embed-server (mocked, no GPU or Qdrant needed) |
 | `../search.py` | CLI search tool — query Qdrant and return timestamped results |
 | `../test_search.py` | Unit tests for search.py |

@@ -189,7 +189,7 @@ docker push sligokid/whisper-sync:latest
 
 # On LUMI
 singularity build \
-    /scratch/project_465003209/mcgowank/whisper-sync.sif \
+    /scratch/project_465003359/mcgowank/whisper-sync.sif \
     docker://sligokid/whisper-sync:latest
 ```
 
@@ -208,7 +208,7 @@ SSH into LUMI, navigate to the sync job directory, and submit:
 
 ```bash
 ssh lumi
-cd /scratch/project_465003209/mcgowank/hpc-demo-1/4-file-sync/hpc
+cd /scratch/project_465003359/mcgowank/hpc-demo-1/4-file-sync/hpc
 sbatch sync-sbatch.sh
 ```
 
@@ -223,10 +223,10 @@ The job runs one sync cycle and resubmits itself on exit. The chain continues in
 squeue -u $USER
 
 # Watch the latest sync log
-tail -f /scratch/project_465003209/mcgowank/hpc-demo-1/logs/sync-*.out | head -50
+tail -f /scratch/project_465003359/mcgowank/hpc-demo-1/logs/sync-*.out | head -50
 
 # Check the manifest for arrived files
-cat /scratch/project_465003209/mcgowank/hpc-demo-1/logs/sync-manifest.txt
+cat /scratch/project_465003359/mcgowank/hpc-demo-1/logs/sync-manifest.txt
 ```
 
 To stop the chain:
@@ -242,7 +242,7 @@ scancel <jobid>
 The chain stops if you cancel the job or if `sbatch` itself fails (rare). To restart:
 
 ```bash
-cd /scratch/project_465003209/mcgowank/hpc-demo-1/4-file-sync/hpc
+cd /scratch/project_465003359/mcgowank/hpc-demo-1/4-file-sync/hpc
 sbatch sync-sbatch.sh
 ```
 
