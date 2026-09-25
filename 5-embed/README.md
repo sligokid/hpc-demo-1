@@ -1,10 +1,25 @@
 # 5-embed — Sentiment, Embedding, Indexing & Semantic Search
 
-This folder covers **Stages 4 and 5** of the SLICK+ pipeline — sentiment scoring and vector indexing. Together they transform transcript segments and Ollama-extracted metadata into a searchable, sentiment-aware knowledge base.
+Stages 4 and 5 of the SLICK+ pipeline — sentiment scoring and vector indexing. Transforms transcript segments and Ollama-extracted metadata into a searchable, sentiment-aware knowledge base.
 
-### Stage 4 — Sentiment (`sentiment.py`)
+---
 
-After `analyze.py` produces `analysis.json`, `pipeline.py` passes the transcript segments to `sentiment.py`. It scores the full transcript using `cardiffnlp/twitter-xlm-roberta-base-sentiment` (multilingual, no GPU required) and returns a `sentiment_label` (positive / neutral / negative) and a `sentiment_score`. These two fields are merged directly into the metadata dict before it is sent to Qdrant — so every `video_metadata` record carries sentiment as a first-class payload field.
+## Models
+
+| Model | Purpose | GPU required |
+|-------|---------|-------------|
+| `cardiffnlp/twitter-xlm-roberta-base-sentiment` | Sentiment scoring — multilingual RoBERTa fine-tuned on Twitter data across 8 languages | No |
+| `intfloat/multilingual-e5-large` | Text embedding — 1024-dim vectors covering 100+ languages, ~560 MB | Yes (production) |
+
+`multilingual-e5-large` uses asymmetric prefixes: chunks indexed with `"passage: "`, queries encoded with `"query: "`. This is required by the E5 model and improves retrieval accuracy over symmetric approaches.
+
+> **Sentiment limitation:** `twitter-xlm-roberta` was trained on social media text, not workplace speech. Confident technical language may score as neutral; understated safety warnings may score as positive. `label.py` generates domain-specific training data to address this in Phase 2 — until then, treat sentiment labels as directional signals rather than ground truth.
+
+---
+
+## Stage 4 — Sentiment (`sentiment.py`)
+
+After `analyze.py` produces `analysis.json`, `pipeline.py` passes the transcript to `sentiment.py`, which returns a `sentiment_label` (positive / neutral / negative) and `sentiment_score`. Both fields are merged into the metadata dict before indexing — every `video_metadata` record carries sentiment as a first-class payload field.
 
 ```
 analyze.py → analysis.json
@@ -16,37 +31,28 @@ analyze.py → analysis.json
             metadata + sentiment_label + sentiment_score  → POST /metadata → Qdrant
 ```
 
-### Stage 5 — Embed & Index (`embed-server.py`)
+---
 
-`embed-server.py` loads `intfloat/multilingual-e5-large` once at startup and exposes two HTTP endpoints called by `pipeline.py`:
+## Stage 5 — Embed & Index (`embed-server.py`)
+
+`embed-server.py` loads `multilingual-e5-large` once at startup and exposes two HTTP endpoints called by `pipeline.py`:
 
 - `POST /embed` — receives the Whisper segment list, encodes each chunk into a 1024-dim vector, upserts into `video_chunks`
-- `POST /metadata` — receives the merged metadata dict (including sentiment fields from Stage 4), stores it in `video_metadata`
+- `POST /metadata` — receives the merged metadata dict (including sentiment from Stage 4), stores it in `video_metadata`
 
-Both collections are then queryable by `search.py` and consumed by `6-graph/` to build the knowledge graph and personalised playlists.
+Both collections are queryable by `search.py` and consumed by `6-graph/` for the knowledge graph and personalised playlists.
 
-**What this enables:**
-- A factory worker searches "how do I clear a jam on line 3" and gets back the exact timestamp in an internal video where a colleague demonstrates the fix — in their own language.
-- A floor manager filters `video_metadata` by `sentiment_label` to spot topics that skew negative across the Arabic-language library.
-- `6-graph/graph.py` colours graph nodes by sentiment; `6-graph/playlist.py` can filter or boost by sentiment label.
+---
 
-**Components:**
-- `sentiment.py` — Stage 4: per-video sentiment scoring, output merged into metadata before indexing
-- `embed-server.py` — Stage 5: HTTP service that embeds chunks and upserts both collections into Qdrant
-- `label.py` — calls Llama 3 to produce JSONL sentiment training data for future fine-tuning (training deferred to Phase 2)
-- `search.py` (project root) — CLI tool that queries `video_chunks` and returns timestamped results
+## What sentiment enables
 
-Blocks on: `2-inference/infer.py --segments` (issue 001) — each chunk carries `timestamp_start`/`timestamp_end` from `segments.json`.
+**Content routing in playlists.** Sentiment becomes a filter, not just metadata. Onboarding playlists can prefer positive-sentiment videos while risk training can deliberately surface negative-sentiment content where workers describe what went wrong.
 
-### What sentiment adds
+**Organisational health signal in the graph.** A cluster of negative-sentiment nodes all tagged `equipment` and `arabic` surfaces a pattern — a knowledge gap, training failure, or team stress signal — without flagging any individual employee.
 
-**Content routing in playlists.** Sentiment becomes a filter, not just metadata. Onboarding playlists can prefer positive-sentiment videos — upbeat, confident delivery — while risk and compliance training can deliberately surface negative-sentiment content where experienced workers describe what went wrong. Without sentiment, `playlist.py` has no way to make that distinction; it only knows tags.
+**Metadata enrichment that compounds downstream.** Because sentiment is merged before indexing, every future tool that reads Qdrant gets it for free. Adding it later would require re-processing every video already in the collection.
 
-**Organisational health signal in the graph.** A manager looking at the knowledge graph who sees a cluster of negative-sentiment nodes all tagged `equipment` and `arabic` has a signal they could not get from a flat file system: something about how Arabic-speaking workers talk about equipment is consistently negative. That might mean a knowledge gap, a training failure, a team under stress, or a real safety hazard. No individual employee is flagged — it is an aggregate pattern surfaced without any additional tooling.
-
-**Metadata enrichment that compounds downstream.** Because sentiment is merged into the `video_metadata` payload before indexing, every future tool that reads Qdrant gets it for free — the graph, the playlist, any future search filter, a future insights dashboard. It costs one model pass per video at pipeline time and then it is just a field. If it were added later it would require re-processing every video already in the collection.
-
-**Current limitation.** The model (`twitter-xlm-roberta`) was trained on social media text, not factory floor speech. It will misclassify confident technical language as neutral and understated safety warnings as positive. The `label.py` silver-labelling pipeline exists to generate domain-specific training data to fix this in Phase 2 — but until that fine-tuned model ships, sentiment labels should be treated as directional signals rather than ground truth.
+---
 
 ## How it works
 
@@ -66,7 +72,7 @@ pipeline.py  ──POST /embed──►  embed-server.py
     └──POST /metadata──────────────►│  loads multilingual-e5-large (once at startup)
                                     │
                                     ▼
-                               Qdrant (local)
+                               Qdrant
                                ┌─────────────────────────────────────────┐
                                │ video_chunks  (1024-dim cosine vectors)  │
                                │   each row = one Whisper segment         │
@@ -85,16 +91,18 @@ pipeline.py  ──POST /embed──►  embed-server.py
 
 ### Indexing path (pipeline.py → embed-server.py → Qdrant)
 
-1. `pipeline.py` calls `transcribe_with_segments()` instead of `transcribe()` when `embed.enabled: true`. This runs Whisper with `return_timestamps=True` and returns the raw segment list alongside the transcript text.
-2. Each segment `{start, end, text}` is sent as a chunk to `POST /embed`. The embed server prepends `"passage: "` to each text (required by the E5 model for passages being indexed) and encodes the batch in one call to `SentenceTransformer.encode()`.
-3. The 1024-dim vectors are upserted into the `video_chunks` Qdrant collection with the full segment payload attached. Each point gets a random UUID so re-running a pipeline adds new points rather than overwriting — wipe the collection between full re-indexes if needed.
-4. After the analyze stage, `pipeline.py` calls `POST /metadata` to store the structured Ollama output (title, description, tags, goals, skills) alongside the file reference in `video_metadata`.
+1. `pipeline.py` calls `transcribe_with_segments()` when `embed.enabled: true`, running Whisper with `return_timestamps=True` to produce a segment list alongside the transcript text.
+2. Each segment `{start, end, text}` is sent to `POST /embed`. The server prepends `"passage: "` and encodes the batch in one `SentenceTransformer.encode()` call.
+3. The 1024-dim vectors are upserted into `video_chunks` with full segment payload. Each point gets a random UUID — re-running the pipeline appends rather than overwrites, so wipe the collection between full re-indexes if needed.
+4. After the analyze stage, `pipeline.py` calls `POST /metadata` to store the structured Ollama output in `video_metadata`.
 
 ### Search path (search.py → Qdrant)
 
-1. `search.py` loads the same `multilingual-e5-large` model and encodes the user query with the `"query: "` prefix (E5 uses asymmetric prefixes — `"passage: "` at index time, `"query: "` at search time).
-2. `query_points()` performs approximate nearest-neighbour search against `video_chunks` using cosine similarity. An optional `Filter` on the `lang` payload field narrows results to one language.
-3. Results are returned as `[{file, timestamp_start, score, text}]` — enough for a UI to deep-link directly to the moment in the video.
+1. `search.py` encodes the user query with the `"query: "` prefix.
+2. `query_points()` performs approximate nearest-neighbour search against `video_chunks` using cosine similarity. An optional `Filter` on `lang` narrows results to one language.
+3. Results are returned as `[{file, timestamp_start, score, text}]` — enough to deep-link directly to the moment in the video.
+
+---
 
 ## Running locally
 
