@@ -25,6 +25,7 @@ SCRATCH=/scratch/project_465003359/mcgowank
 SIF=$SCRATCH/whisper-hpc.sif
 OLLAMA_ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 EMBED_ENDPOINT_FILE=$SCRATCH/embed.endpoint
+INDEX_ENDPOINT_FILE=$SCRATCH/index.endpoint
 PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
 
 mkdir -p "$PROJECT_ROOT/logs"
@@ -37,12 +38,19 @@ fi
 
 if [ ! -f "$EMBED_ENDPOINT_FILE" ]; then
     echo "Error: embed-server endpoint file not found at $EMBED_ENDPOINT_FILE" >&2
-    echo "Start the embed service first: sbatch 5-embed/hpc/embeddings-serve-sbatch.sh" >&2
+    echo "Start the embed service first: sbatch 6-embed/hpc/1-embed-serve-sbatch.sh" >&2
+    exit 1
+fi
+
+if [ ! -f "$INDEX_ENDPOINT_FILE" ]; then
+    echo "Error: index-server endpoint file not found at $INDEX_ENDPOINT_FILE" >&2
+    echo "Start the index service first: sbatch 7-index/hpc/2-index-serve-sbatch.sh" >&2
     exit 1
 fi
 
 OLLAMA_HOST=$(cat "$OLLAMA_ENDPOINT_FILE")
 EMBED_HOST=$(cat "$EMBED_ENDPOINT_FILE")
+INDEX_HOST=$(cat "$INDEX_ENDPOINT_FILE")
 
 # Pick this task's file from the manifest
 mapfile -t FILES < "$MANIFEST"
@@ -60,6 +68,7 @@ echo "Job       : $SLURM_JOB_ID  Array task: $SLURM_ARRAY_TASK_ID"
 echo "File      : $AUDIO_FILE"
 echo "Ollama    : $OLLAMA_HOST"
 echo "Embed     : $EMBED_HOST"
+echo "Index     : $INDEX_HOST"
 echo "============================================"
 
 singularity exec \
@@ -70,6 +79,7 @@ singularity exec \
 export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
 export MIOPEN_DISABLE_CACHE=1
 export EMBEDDING_SERVER_URL=\"http://${EMBED_HOST}\"
+export INDEX_SERVER_URL=\"http://${INDEX_HOST}\"
 python /workspace/pipeline.py \
     --config /workspace/pipeline.yaml \
     --file \"$AUDIO_CONTAINER\" \
