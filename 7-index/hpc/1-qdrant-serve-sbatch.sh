@@ -68,6 +68,7 @@ singularity exec \
     --rocm \
     --bind "$QDRANT_STORAGE_DIR:/qdrant/storage" \
     --env QDRANT__SERVICE__HTTP_PORT=${QDRANT_PORT} \
+    --env QDRANT__STORAGE__STORAGE_PATH=/qdrant/storage \
     "$QDRANT_SIF" \
     bash -c "
         export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
