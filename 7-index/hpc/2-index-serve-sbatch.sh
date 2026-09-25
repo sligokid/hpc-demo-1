@@ -5,7 +5,8 @@
 #
 # Prerequisites:
 #   1. qdrant-serve-sbatch.sh is running and has written the endpoint file
-#   2. index-server image pulled (or build locally)
+#   2. embeddings-api.sif pulled (shared with 6-embed):
+#      singularity pull /scratch/project_465003359/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
 #
 # Submit:
 #   sbatch 7-index/hpc/2-index-serve-sbatch.sh
@@ -31,6 +32,7 @@ set -euo pipefail
 INDEX_PORT=8766
 HEALTH_TIMEOUT=60
 SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
+EMBEDDINGS_SIF=${EMBEDDINGS_SIF:-$SCRATCH/embeddings-api.sif}
 QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
 INDEX_ENDPOINT_FILE=$SCRATCH/index.endpoint
 # ----------------------------------
@@ -56,6 +58,7 @@ QDRANT_HOST=$(cat "$QDRANT_ENDPOINT_FILE")
 echo "============================================"
 echo "Job ID   : $SLURM_JOB_ID"
 echo "Node     : $(hostname)"
+echo "SIF      : $EMBEDDINGS_SIF"
 echo "Port     : $INDEX_PORT"
 echo "Qdrant   : $QDRANT_HOST"
 echo "============================================"
@@ -69,10 +72,18 @@ if ss -tlnp 2>/dev/null | grep -q ":${INDEX_PORT} "; then
     exit 1
 fi
 
-# Start index-server directly with the venv python (no GPU needed).
-python "$PROJECT_ROOT/7-index/index_server.py" \
-    --qdrant-host "${QDRANT_HOST}" \
-    --port "${INDEX_PORT}" &
+# Start index-server inside Singularity (no --rocm needed — CPU only).
+# Reuses embeddings-api.sif which already has flask + qdrant-client.
+# bash -c ensures LD_LIBRARY_PATH is exported inside the container.
+singularity exec \
+    --bind "$PROJECT_ROOT:/workspace" \
+    "$EMBEDDINGS_SIF" \
+    bash -c "
+        export LD_LIBRARY_PATH=/usr/local/lib
+        python /workspace/7-index/index_server.py \
+            --qdrant-host ${QDRANT_HOST} \
+            --port ${INDEX_PORT}
+    " &
 INDEX_PID=$!
 
 echo "Index server PID: $INDEX_PID"
