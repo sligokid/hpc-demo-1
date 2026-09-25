@@ -1,10 +1,17 @@
 # Inference — Whisper Transcription & Translation
 
-Transcribes audio using a fine-tuned Whisper checkpoint. Audio of any length is supported — the pipeline chunks into overlapping 30-second windows automatically.
+Transcribes / Translates audio to text using a fine-tuned language specific Whisper checkpoint. Audio of any length is supported — the pipeline chunks into overlapping 30-second windows automatically.
 
 ## Running
 
 ### Local — native Python
+
+### Transcription mode
+Transcribe audio/video files to text
+
+### Translation mode
+
+Pass `--task translate` to produce an English transcript from non-English audio without retraining:
 
 Run from the `local/` directory:
 
@@ -12,21 +19,6 @@ Run from the `local/` directory:
 cd 2-inference/local
 bash infer.sh           # EN transcription
 bash infer-translate.sh # ES → EN translation
-```
-
-Or directly from the project root:
-
-```bash
-python 2-inference/infer.py --model_dir checkpoints/en --audio 2-inference/audio/sligo-triathlon-club-inviting-women-to-try-a-tri.mp3
-python 2-inference/infer.py --model_dir checkpoints/es --audio 2-inference/audio/spanish-telephone-phrases.mp3
-```
-
-### Translation mode
-
-Pass `--task translate` to produce an English transcript from non-English audio without retraining:
-
-```bash
-python 2-inference/infer.py --model_dir checkpoints/es --audio 2-inference/audio/spanish-telephone-phrases.mp3 --task translate
 ```
 
 **Constraints:**
@@ -43,12 +35,6 @@ cd 2-inference/docker
 bash infer.sh
 ```
 
-Or directly from the project root:
-
-```bash
-docker compose run dev python 2-inference/infer-30-secs.py --model_dir checkpoints/en --audio 2-inference/audio/sligo-triathlon-club-inviting-women-to-try-a-tri.mp3
-```
-
 ### HPC — Singularity (AMD/ROCm)
 
 Run from the project root:
@@ -61,8 +47,9 @@ Run from the project root:
 
 ## Tests
 
+Run from the `2-inference/` directory:
 ```bash
-pytest 2-inference/test_infer.py
+pytest test_infer.py
 ```
 
 ## Files
