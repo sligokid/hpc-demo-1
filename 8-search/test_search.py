@@ -5,6 +5,10 @@ All external dependencies (SentenceTransformer, QdrantClient) are mocked so
 no model weights, GPU, or running Qdrant instance are required.
 """
 
+import sys
+import pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+
 import numpy as np
 from unittest.mock import MagicMock, patch
 

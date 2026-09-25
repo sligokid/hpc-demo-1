@@ -1,4 +1,4 @@
-# 6-graph — Knowledge Graph & Playlist Generator
+# 9-graph — Knowledge Graph & Playlist Generator
 
 Query-layer tools that read from the `video_metadata` Qdrant collection and produce usable outputs with no additional model inference.
 
@@ -43,16 +43,16 @@ Use `hpc/graph-sbatch.sh` instead of `create-playlist-graph.sh`. It reads the Qd
 
 ```bash
 # Default — user engineer@org.com, top 10
-sbatch 6-graph/hpc/graph-sbatch.sh
+sbatch 9-graph/hpc/graph-sbatch.sh
 
 # Custom user / playlist size
-sbatch 6-graph/hpc/graph-sbatch.sh --user operative@org.com --top-n 5
+sbatch 9-graph/hpc/graph-sbatch.sh --user operative@org.com --top-n 5
 
 # Sentiment filter
-sbatch 6-graph/hpc/graph-sbatch.sh --user engineer@org.com --sentiment positive
+sbatch 9-graph/hpc/graph-sbatch.sh --user engineer@org.com --sentiment positive
 
 # EU AI Act opt-out
-sbatch 6-graph/hpc/graph-sbatch.sh --no-personalise --user manager@org.com
+sbatch 9-graph/hpc/graph-sbatch.sh --no-personalise --user manager@org.com
 ```
 
 Outputs land in `sync/output/` (same as the local script):
@@ -82,13 +82,13 @@ Reads every record from `video_metadata` and produces:
 
 ```bash
 # Default output: sync/output/graph.json + sync/output/graph.html
-python 6-graph/graph.py
+python 9-graph/graph.py
 
 # Custom output path
-python 6-graph/graph.py --output sync/output/graph.json
+python 9-graph/graph.py --output sync/output/graph.json
 
 # Custom Qdrant host
-python 6-graph/graph.py --qdrant-host localhost:6333 --output sync/output/graph.json
+python 9-graph/graph.py --qdrant-host localhost:6333 --output sync/output/graph.json
 ```
 
 Then open `sync/output/graph.html` in any browser.
@@ -139,13 +139,13 @@ A new hire with role `production_operative` and an empty watch history gets a pl
 
 ```bash
 # Personalised playlist, top 10
-python 6-graph/playlist.py --user engineer@org.com --top-n 10
+python 9-graph/playlist.py --user engineer@org.com --top-n 10
 
 # Filter to positive-sentiment videos only
-python 6-graph/playlist.py --user engineer@org.com --sentiment positive
+python 9-graph/playlist.py --user engineer@org.com --sentiment positive
 
 # Custom Qdrant host
-python 6-graph/playlist.py --user engineer@org.com --qdrant-host localhost:6333
+python 9-graph/playlist.py --user engineer@org.com --qdrant-host localhost:6333
 ```
 
 ### EU AI Act opt-out
@@ -154,7 +154,7 @@ Employees can disable personalisation. In opt-out mode the tool returns unranked
 
 ```bash
 # Via CLI flag
-python 6-graph/playlist.py --user engineer@org.com --no-personalise
+python 9-graph/playlist.py --user engineer@org.com --no-personalise
 
 # Via profile field — set "personalise": false in profiles/<user>.json
 ```
@@ -245,7 +245,7 @@ production_operative:
 ## Tests
 
 ```bash
-pytest 6-graph/test_graph.py 6-graph/test_playlist.py -v
+pytest 9-graph/test_graph.py 9-graph/test_playlist.py -v
 ```
 
 All tests mock Qdrant — no running services required.

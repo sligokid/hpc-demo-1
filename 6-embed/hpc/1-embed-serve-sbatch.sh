@@ -1,18 +1,18 @@
 #!/bin/bash
 # Persistent embedding server service on a GPU node.
-# Loads intfloat/multilingual-e5-large once and serves POST /embed and POST /metadata.
+# Loads intfloat/multilingual-e5-large once and serves POST /embed on port 8765.
+# Returns raw vectors — no Qdrant dependency.
 #
 # Prerequisites:
-#   1. qdrant-serve-sbatch.sh is running and has written the endpoint file
-#   2. SIFs are pulled:
-#      singularity pull /scratch/project_465003359/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
+#   SIF pulled:
+#     singularity pull /scratch/project_465003359/mcgowank/embeddings-api.sif docker://sligokid/embeddings-api:latest
 #
 # Submit:
-#   sbatch 5-embed/hpc/embeddings-serve-sbatch.sh
+#   sbatch 6-embed/hpc/1-embed-serve-sbatch.sh
 #
-# Chain with the Qdrant service job:
-#   JID=$(sbatch --parsable 5-embed/hpc/qdrant-serve-sbatch.sh)
-#   sbatch --dependency=after:$JID 5-embed/hpc/embeddings-serve-sbatch.sh
+# Chain with the index service job:
+#   JID=$(sbatch --parsable 6-embed/hpc/1-embed-serve-sbatch.sh)
+#   sbatch --dependency=after:$JID 7-index/hpc/2-index-serve-sbatch.sh
 
 #SBATCH --job-name=E-embed
 #SBATCH --nodes=1
@@ -33,12 +33,11 @@ EMBED_PORT=8765
 HEALTH_TIMEOUT=180                    # seconds to wait for model load + server ready
 SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 EMBEDDINGS_SIF=${EMBEDDINGS_SIF:-$SCRATCH/embeddings-api.sif}
-QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
 EMBED_ENDPOINT_FILE=$SCRATCH/embed.endpoint
 # ----------------------------------
 
 # Resolve project root whether sbatch was called from the project root or
-# from within 5-embed/hpc/.
+# from within 6-embed/hpc/.
 if [ -f "$SLURM_SUBMIT_DIR/pipeline.yaml" ]; then
     PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
 else
@@ -46,22 +45,12 @@ else
 fi
 mkdir -p "$PROJECT_ROOT/logs"
 
-# Fail fast if the Qdrant service is not running
-if [ ! -f "$QDRANT_ENDPOINT_FILE" ]; then
-    echo "Error: Qdrant endpoint file not found at $QDRANT_ENDPOINT_FILE" >&2
-    echo "Start the Qdrant service first: sbatch 5-embed/hpc/qdrant-serve-sbatch.sh" >&2
-    exit 1
-fi
-
-QDRANT_HOST=$(cat "$QDRANT_ENDPOINT_FILE")
-
 echo "============================================"
 echo "Job ID   : $SLURM_JOB_ID"
 echo "Node     : $(hostname)"
 echo "GPU      : $(rocm-smi --showproductname 2>/dev/null | grep 'Card Series' | head -1 || echo 'unknown')"
 echo "SIF      : $EMBEDDINGS_SIF"
 echo "Port     : $EMBED_PORT"
-echo "Qdrant   : $QDRANT_HOST"
 echo "============================================"
 
 # Clean up endpoint file on exit.
@@ -81,8 +70,7 @@ singularity exec \
     "$EMBEDDINGS_SIF" \
     bash -c "
         export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
-        python /workspace/5-embed/embed_server.py \
-            --qdrant-host ${QDRANT_HOST} \
+        python /workspace/6-embed/embed_server.py \
             --port ${EMBED_PORT}
     " &
 EMBED_PID=$!

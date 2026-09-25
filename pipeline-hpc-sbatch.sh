@@ -73,5 +73,6 @@ export EMBEDDING_SERVER_URL=\"http://${EMBED_HOST}\"
 python /workspace/pipeline.py \
     --config /workspace/pipeline.yaml \
     --file \"$AUDIO_CONTAINER\" \
-    --ollama-host \"$OLLAMA_HOST\"
+    --ollama-host \"$OLLAMA_HOST\" \
+    --analyze-model llama3.1:8b
 "

@@ -5,11 +5,11 @@
 #   singularity pull /scratch/project_465003359/mcgowank/qdrant.sif docker://qdrant/qdrant:latest
 #
 # Submit:
-#   sbatch 5-embed/hpc/qdrant-serve-sbatch.sh
+#   sbatch 7-index/hpc/1-qdrant-serve-sbatch.sh
 #
-# Chain with the embedding service:
-#   JID=$(sbatch --parsable 5-embed/hpc/qdrant-serve-sbatch.sh)
-#   sbatch --dependency=after:$JID 5-embed/hpc/embeddings-serve-sbatch.sh
+# Chain with the index and embed services:
+#   JID=$(sbatch --parsable 7-index/hpc/1-qdrant-serve-sbatch.sh)
+#   sbatch --dependency=after:$JID 7-index/hpc/2-index-serve-sbatch.sh
 
 #SBATCH --job-name=D-qdrant
 #SBATCH --nodes=1
@@ -35,7 +35,7 @@ ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
 # ----------------------------------
 
 # Resolve project root whether sbatch was called from the project root or
-# from within 5-embed/hpc/.
+# from within 7-index/hpc/.
 if [ -f "$SLURM_SUBMIT_DIR/pipeline.yaml" ]; then
     PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
 else

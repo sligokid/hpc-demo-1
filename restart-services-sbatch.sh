@@ -31,7 +31,7 @@ trap 'sbatch --begin=now+12hours "$SLURM_SUBMIT_DIR/restart-services-sbatch.sh" 
 
 # Cancel services by name — safe to run inside a SLURM job (does not cancel this job).
 echo "Cancelling service jobs..."
-for job_name in B-ollama C-sync D-qdrant E-embed Z-poll; do
+for job_name in B-ollama C-sync D-qdrant E-embed I-index Z-poll; do
     scancel --name="$job_name" --user="$USER" 2>/dev/null || true
 done
 
@@ -48,17 +48,21 @@ echo "Submitting C-sync..."
 sbatch "$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"
 
 echo "Submitting D-qdrant..."
-QDRANT_JID=$(sbatch --parsable "$PROJECT_ROOT/5-embed/hpc/1-qdrant-serve-sbatch.sh")
+QDRANT_JID=$(sbatch --parsable "$PROJECT_ROOT/7-index/hpc/1-qdrant-serve-sbatch.sh")
 echo "  Job ID: $QDRANT_JID"
 echo "Waiting 2 minutes for D-qdrant to write endpoint file..."
 sleep 120
 
 echo "Submitting E-embed..."
-EMBED_JID=$(sbatch --parsable "$PROJECT_ROOT/5-embed/hpc/2-embeddings-serve-sbatch.sh")
+EMBED_JID=$(sbatch --parsable "$PROJECT_ROOT/6-embed/hpc/1-embed-serve-sbatch.sh")
 echo "  Job ID: $EMBED_JID"
 
-# Z-poll must not start until Ollama, Qdrant, and the embed server are all running.
-echo "Submitting Z-poll (depends on B-ollama:$OLLAMA_JID, D-qdrant:$QDRANT_JID, E-embed:$EMBED_JID)..."
-sbatch --dependency=after:${OLLAMA_JID}:${QDRANT_JID}:${EMBED_JID} "$PROJECT_ROOT/pipeline-hpc-poll.sh"
+echo "Submitting I-index..."
+INDEX_JID=$(sbatch --parsable "$PROJECT_ROOT/7-index/hpc/2-index-serve-sbatch.sh")
+echo "  Job ID: $INDEX_JID"
+
+# Z-poll must not start until Ollama, embed server, and index server are all running.
+echo "Submitting Z-poll (depends on B-ollama:$OLLAMA_JID, E-embed:$EMBED_JID, I-index:$INDEX_JID)..."
+sbatch --dependency=after:${OLLAMA_JID}:${EMBED_JID}:${INDEX_JID} "$PROJECT_ROOT/pipeline-hpc-poll.sh"
 
 echo "Done. Next restart scheduled in 12 hours."

@@ -2,9 +2,9 @@
 Semantic search over indexed video chunks in Qdrant.
 
 Usage:
-    python search.py --query "how to clear a jam on line 3"
-    python search.py --query "..." --lang es --top-k 5
-    python search.py --query "..." --qdrant-host localhost:6333
+    python 8-search/search.py --query "how to clear a jam on line 3"
+    python 8-search/search.py --query "..." --lang es --top-k 5
+    python 8-search/search.py --query "..." --qdrant-host localhost:6333
 """
 
 import argparse

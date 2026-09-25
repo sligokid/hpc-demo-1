@@ -46,6 +46,13 @@ python infer.py --model_dir checkpoints/es --audio path/to/audio.wav
 | `1-train/submit-gpu.sh` | SLURM job array definition — maps array index 0–4 to language codes, allocates 1 GPU per task |
 | `1-train/submit-cpu.sh` | SLURM job array definition — CPU-only fallback variant |
 | `infer.py` | Loads a saved checkpoint and transcribes a local audio file |
+| `5-sentiment/sentiment.py` | HuggingFace sentiment classifier — aggregates per-chunk labels to video-level score |
+| `6-embed/embed_server.py` | Flask service (port 8765): POST /embed — encodes text with multilingual-e5-large, returns raw vectors (no Qdrant dependency) |
+| `7-index/index_server.py` | Flask service (port 8766): POST /index, POST /metadata — receives vectors, writes to Qdrant `video_chunks` / `video_metadata` (no model dependency) |
+| `8-search/search.py` | Semantic search over indexed chunks in Qdrant — returns timestamped results |
+| `9-graph/graph.py` | Knowledge-graph builder over transcript metadata |
+| `9-graph/playlist.py` | Playlist generator from graph traversal |
+| `pipeline.py` | Orchestrator: infer → analyze → sentiment → embed (6-embed) → index (7-index) |
 
 **Key design decisions:**
 - One fine-tuned model per language (not multilingual single-model) — jobs run in parallel, each converges independently

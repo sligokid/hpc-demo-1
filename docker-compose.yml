@@ -9,6 +9,7 @@ services:
     environment:
       - HF_HOME=/workspace/.hf_cache
       - EMBEDDING_SERVER_URL=http://embed-server:8765
+      - INDEX_SERVER_URL=http://index-server:8766
     working_dir: /workspace
 
   ollama:
@@ -19,10 +20,11 @@ services:
       - ollama_models:/root/.ollama
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD", "ollama", "list"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 12
+      start_period: 30s
 
   qdrant:
     image: qdrant/qdrant
@@ -42,12 +44,9 @@ services:
   embed-server:
     build:
       context: .
-      dockerfile: 5-embed/docker/Dockerfile
+      dockerfile: 6-embed/docker/Dockerfile
     ports:
       - "8765:8765"
-    depends_on:
-      qdrant:
-        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8765/health"]
@@ -55,6 +54,23 @@ services:
       timeout: 10s
       retries: 5
       start_period: 90s
+
+  index-server:
+    build:
+      context: .
+      dockerfile: 7-index/docker/Dockerfile
+    ports:
+      - "8766:8766"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8766/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   ollama_models:
