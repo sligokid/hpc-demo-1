@@ -115,12 +115,20 @@ bash 5-embed/local/2-start-embed-server.sh
 
 Downloads `multilingual-e5-large` on first run (~560 MB). Logs `Ready. Listening on :8765` when warm. Creates `video_chunks` and `video_metadata` collections in Qdrant if they don't exist.
 
-### Step 3 — run the pipeline end-to-end
+### Step 3 — smoke-test the embed server (optional)
 
 ```bash
-bash 5-embed/local/3-run-pipeline.sh
+bash 5-embed/local/3-test-embeddings-curl.sh
+```
+
+Posts a small batch of synthetic chunks, verifies they are stored in Qdrant, then runs a nearest-neighbour search. Useful for confirming the server is warm before processing real audio.
+
+### Step 4 — run the pipeline end-to-end
+
+```bash
+bash 5-embed/local/4-run-pipeline.sh
 # or a specific file:
-bash 5-embed/local/3-run-pipeline.sh 2-inference/audio/sligo-triathlon-club-inviting-women-to-try-a-tri.mp3 en
+bash 5-embed/local/4-run-pipeline.sh 2-inference/audio/sligo-triathlon-club-inviting-women-to-try-a-tri.mp3 en
 ```
 
 Runs `pipeline.py` with `embed.enabled: true` (default in `pipeline.yaml`). Each audio file goes through:
@@ -129,7 +137,7 @@ Runs `pipeline.py` with `embed.enabled: true` (default in `pipeline.yaml`). Each
 transcribe (Whisper) → segments.json → analyze (Ollama) → embed (multilingual-e5-large) → Qdrant
 ```
 
-### Step 4 — search
+### Step 5 — search
 
 ```bash
 python search.py --query "how do I clear a jam on line 3"
@@ -148,6 +156,65 @@ Returns JSON:
   }
 ]
 ```
+
+### Step 6 — inspect the sentiment collection (optional)
+
+```bash
+bash 5-embed/local/6-scroll-sentiment-collection.sh
+```
+
+Scrolls the `video_metadata` collection and prints `sentiment_label` + `sentiment_score` for all indexed files.
+
+## Running on Docker
+
+### Step 1 — start all services
+
+```bash
+docker compose up -d qdrant embed-server ollama
+```
+
+Starts Qdrant (port 6333), the embed-server (port 8765), and Ollama in the background. The embed-server container depends on Qdrant, so Docker Compose starts them in the right order. On first run, `multilingual-e5-large` (~560 MB) is downloaded into the container image layer.
+
+### Step 2 — confirm the embed server is ready
+
+```bash
+until docker compose exec embed-server curl -sf http://localhost:8765/health > /dev/null 2>&1; do
+    echo "not ready yet — retrying in 5s..."
+    sleep 5
+done
+echo "embed-server ready."
+```
+
+Or run the full Docker demo script which waits for readiness automatically:
+
+```bash
+bash 5-embed/docker/1-run-pipeline.sh
+# or a specific file and language:
+bash 5-embed/docker/1-run-pipeline.sh inbox/en/foo.mp3 en
+```
+
+The script starts services, waits for the embed-server health check, pulls the `llama3` model, processes the audio file through all five pipeline stages, then runs semantic search, knowledge graph export, and playlist generation as a smoke test.
+
+### Step 3 — run individual pipeline tools inside Docker
+
+```bash
+docker compose run --rm dev python pipeline.py --file inbox/en/foo.mp3 --lang en
+docker compose run --rm dev python search.py --query "how do I clear a jam" --qdrant-host qdrant:6333
+docker compose run --rm dev python 6-graph/graph.py --qdrant-host qdrant:6333 --output sync/output/graph.json
+docker compose run --rm dev python 6-graph/playlist.py --user engineer@org.com --qdrant-host qdrant:6333
+```
+
+Inside Docker Compose the Qdrant hostname is `qdrant` (the service name), not `localhost`.
+
+### Step 4 — run tests
+
+```bash
+docker compose run --rm dev pytest 5-embed/test_embed_server.py
+```
+
+No GPU, running Qdrant, or model weights required — all external dependencies are mocked.
+
+---
 
 ## Flags
 
@@ -234,30 +301,67 @@ singularity pull /scratch/project_465003359/mcgowank/embeddings-api.sif docker:/
 Submit from the project root. Qdrant must be running before the embed server starts so its endpoint file is present:
 
 ```bash
-JID=$(sbatch --parsable 5-embed/hpc/qdrant-serve-sbatch.sh)
-sbatch --dependency=after:$JID 5-embed/hpc/embeddings-serve-sbatch.sh
-```
-
-Or let `restart-services-sbatch.sh` manage the full service lifecycle (it waits 2 minutes for Qdrant before submitting the embed server):
-
-```bash
-sbatch restart-services-sbatch.sh
+JID=$(sbatch --parsable 5-embed/hpc/1-qdrant-serve-sbatch.sh)
+sbatch --dependency=after:$JID 5-embed/hpc/2-embeddings-serve-sbatch.sh
 ```
 
 Monitor with `squeue -u $USER`. Logs at `logs/qdrant-slurm-<jobid>.out` and `logs/embed-slurm-<jobid>.out`.
 
 The Qdrant service writes `$SCRATCH/qdrant.endpoint` (`hostname:6333`) when ready; the embed server reads it to connect. The embed server writes `$SCRATCH/embed.endpoint` (`hostname:8765`) when warm.
 
+## EU AI Act Compliance
+
+> **Human review gate:** The compliance language in this section must be reviewed and approved by a human before this README is merged. CSC's Senior Coordinator for Trustworthy AI has assessed SLICK+ as not high-risk under the EU AI Act based on its role as a knowledge-sharing and learning tool — not a system for recruitment, employee evaluation, performance monitoring, or discipline. The constraints below follow from that assessment and are **design requirements, not optional configuration**.
+
+### Constraints
+
+1. **No individual performance scoring.** The personalisation engine must not generate per-employee engagement scores visible to managers.
+
+2. **Opt-out required.** Employees must be able to disable personalisation and browse all content freely without any record being kept of that choice.
+
+3. **No management-visible engagement data in standard mode.** Watch history used for playlist ranking is used only to personalise the individual's own experience.
+
+4. **Consent-based data collection.** Any use of real employee video or audio data requires a signed Data Processing Agreement before processing on LUMI-G infrastructure (required before Task 3 enterprise pilot).
+
+5. **Training data for this PRD uses public FLEURS data and synthetic/dummy inputs only.** No real employee data is processed until the Task 3 DPA is in place.
+
+### How `--no-personalise` satisfies the opt-out requirement
+
+When an employee runs:
+
+```bash
+python 6-graph/playlist.py --user engineer@org.com --no-personalise
+```
+
+`playlist.py` skips all personalisation logic entirely:
+
+- Watch history is **not read** from the user profile.
+- Role tags are **not loaded** from `roles.yaml`.
+- No scoring is applied — results are returned in alphabetical order by filename.
+- The `--no-personalise` flag is transient: it is a CLI argument, not written back to the profile or logged anywhere. **No record of the opt-out choice is kept.**
+
+The same behaviour is triggered by setting `"personalise": false` in the user's `profiles/<user>.json`. This satisfies constraint 2 above: the employee gets full unfiltered access to the content library and the system retains no signal that personalisation was disabled.
+
+Constraint 1 is satisfied structurally: `playlist.py` outputs a ranked list of videos for the requesting user only. There is no manager-facing endpoint, no aggregate engagement dashboard, and no per-employee score field in the `video_metadata` Qdrant collection. The `_score` field in playlist output is visible only in the CLI response to the requesting user's own session.
+
 ## Files
 
 | File | Role |
 |------|------|
-| `embed-server.py` | Flask HTTP service — embeds and indexes transcript chunks |
+| `embed_server.py` | Flask HTTP service — embeds and indexes transcript chunks |
+| `sentiment.py` | Stage 4: per-video sentiment scoring via xlm-roberta |
+| `label.py` | Llama 3 auto-labelling of transcript chunks for fine-tuning data |
 | `local/1-start-qdrant.sh` | Start Qdrant via Docker |
-| `local/2-start-embed-server.sh` | Start embed-server.py |
-| `local/3-run-pipeline.sh` | End-to-end pipeline run on a sample file |
-| `hpc/qdrant-serve-sbatch.sh` | SLURM service job — runs Qdrant SIF on a GPU node (D-qdrant) |
-| `hpc/embeddings-serve-sbatch.sh` | SLURM service job — runs embed-server inside the embeddings-api SIF (E-embed) |
+| `local/2-start-embed-server.sh` | Start embed_server.py natively |
+| `local/3-test-embeddings-curl.sh` | Smoke-test embed-server and Qdrant via curl |
+| `local/4-run-pipeline.sh` | End-to-end pipeline run on a sample file |
+| `local/5-search-vector-db.sh` | Run semantic search against Qdrant |
+| `local/6-scroll-sentiment-collection.sh` | Inspect sentiment fields across all indexed videos |
+| `docker/Dockerfile` | embed-server image (amd64 compatible for LUMI) |
+| `docker/1-run-pipeline.sh` | End-to-end Docker demo: starts services, processes file, runs search/graph/playlist |
+| `hpc/1-qdrant-serve-sbatch.sh` | SLURM service job — runs Qdrant SIF on a GPU node (D-qdrant) |
+| `hpc/2-embeddings-serve-sbatch.sh` | SLURM service job — runs embed-server inside the embeddings-api SIF (E-embed) |
 | `test_embed_server.py` | Unit tests for embed-server (mocked, no GPU or Qdrant needed) |
 | `../search.py` | CLI search tool — query Qdrant and return timestamped results |
 | `../test_search.py` | Unit tests for search.py |
+| `../6-graph/playlist.py` | CLI personalised playlist generator (opt-out aware via `--no-personalise`) |
