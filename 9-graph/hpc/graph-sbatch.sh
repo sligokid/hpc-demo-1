@@ -19,7 +19,7 @@
 #   --no-personalise    Disable personalisation (EU AI Act opt-out)
 #   --output PATH       graph.json output path (default: sync/output/graph.json)
 
-#SBATCH --job-name=F-graph
+#SBATCH --job-name=G-graph
 #SBATCH --partition=small
 #SBATCH --account=project_465003359
 #SBATCH --ntasks=1
