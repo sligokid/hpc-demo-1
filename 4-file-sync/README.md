@@ -2,6 +2,14 @@
 
 End-to-end setup for the Google Drive ↔ LUMI HPC sync pipeline. Follow these steps once per user / per machine. After setup the pipeline runs automatically via a self-resubmitting SLURM job.
 
+Polls Google Drive every 5 minutes via a self-resubmitting SLURM job.
+
+**Inbound (Drive → LUMI):** rclone copies new files from the Drive input folder to `sync/input/` — rclone handles deduplication natively (size/mtime comparison), so only new files are transferred. After each download pass, newly arrived filenames are appended to `logs/sync-manifest.txt` as a record for the pipeline to act on. A file already in the manifest is skipped to prevent double-counting.
+
+**Outbound (LUMI → Drive):** rclone copies processed outputs from `sync/output/` back to the Drive output folder, again using rclone's native deduplication — no manifest involved.
+
+**Self-resubmitting:** The SLURM job resubmits itself on exit (via a `trap` on EXIT) with a 5-minute delay, so the polling chain runs indefinitely without a crontab or manual resubmission.
+
 ---
 
 ## Prerequisites
@@ -180,17 +188,14 @@ docker buildx build \
 
 ## 7. Convert to SIF
 
-**Push to Docker Hub and build on LUMI:**
+**Push to Docker Hub and pull on LUMI:**
 
 ```bash
 # Locally
-docker tag whisper-sync sligokid/whisper-sync:latest
-docker push sligokid/whisper-sync:latest
+see ../../update-docker-repos.sh
 
 # On LUMI
-singularity build \
-    /scratch/project_465003359/mcgowank/whisper-sync.sif \
-    docker://sligokid/whisper-sync:latest
+see ../../update-sifs.sh
 ```
 
 ## 8. Copy the rclone config to LUMI
@@ -204,11 +209,8 @@ ssh lumi chmod 600 ~/.config/rclone/rclone.conf
 
 ## 10. Start the polling chain on LUMI
 
-SSH into LUMI, navigate to the sync job directory, and submit:
-
 ```bash
-ssh lumi
-cd /scratch/project_465003359/mcgowank/hpc-demo-1/4-file-sync/hpc
+cd hpc
 sbatch sync-sbatch.sh
 ```
 
@@ -223,10 +225,10 @@ The job runs one sync cycle and resubmits itself on exit. The chain continues in
 squeue -u $USER
 
 # Watch the latest sync log
-tail -f /scratch/project_465003359/mcgowank/hpc-demo-1/logs/sync-*.out | head -50
+tail -f logs/sync-*.out | head -50
 
 # Check the manifest for arrived files
-cat /scratch/project_465003359/mcgowank/hpc-demo-1/logs/sync-manifest.txt
+cat logs/sync-manifest.txt
 ```
 
 To stop the chain:
@@ -242,7 +244,7 @@ scancel <jobid>
 The chain stops if you cancel the job or if `sbatch` itself fails (rare). To restart:
 
 ```bash
-cd /scratch/project_465003359/mcgowank/hpc-demo-1/4-file-sync/hpc
+cd /hpc
 sbatch sync-sbatch.sh
 ```
 

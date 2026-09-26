@@ -2,60 +2,54 @@
 # Tags listed here boost relevance when a user's profile role matches.
 
 engineer:
-  - engineering
-  - maintenance
-  - equipment
-  - troubleshooting
-  - safety
-  - inspection
-  - quality
-  - calibration
-  - technical
+  - software development
+  - programming
+  - artificial intelligence
+  - machine learning
+  - neural networks
+  - large language models
+  - technology
+  - productivity
+  - knowledge management
 
 production_operative:
-  - production
   - operations
-  - line-start
-  - line-jam
-  - quality
-  - safety
-  - onboarding
-  - process
+  - logistics
+  - delivery
+  - parcel management
+  - operational knowledge
   - workflow
+  - productivity
+  - change management
+  - employee engagement
 
 manager:
   - leadership
-  - reporting
-  - compliance
-  - kpi
-  - safety
-  - onboarding
-  - quality
-  - process
-
-health_and_safety:
-  - safety
-  - hazard
-  - ppe
-  - emergency
-  - compliance
-  - risk
-  - inspection
+  - change management
+  - organizational development
+  - strategic impact
+  - digital transformation
+  - employee engagement
+  - knowledge management
+  - tacit knowledge
+  - mentoring
 
 new_hire:
+  - knowledge sharing
+  - knowledge management
+  - platform tour
+  - findability
+  - learning culture
+  - team collaboration
   - onboarding
-  - safety
-  - orientation
-  - policy
-  - introduction
-  - process
-  - workflow
+  - social learning
 
 trainer:
-  - training
-  - onboarding
-  - skills
-  - coaching
-  - safety
-  - quality
-  - assessment
+  - social learning
+  - learning culture
+  - knowledge sharing
+  - team collaboration
+  - organizational development
+  - knowledge management
+  - tacit knowledge
+  - productivity

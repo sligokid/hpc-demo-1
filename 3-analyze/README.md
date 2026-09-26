@@ -1,28 +1,28 @@
-# Metadata Generation — Analyze transcripts with Ollama
+# Metadata Generation — Analyze transcripts with llama
 
-`analyze.py` takes a transcript and calls an Ollama LLM to extract structured metadata: title, description, tags, goals, and skills.
+Generate metadata from transcripts using Llama 3.1 8B via Ollama in JSON format.
+Metadata includes: title, description, tags, goals, and skills.
 
 ## Running
 
-### Local — native Ollama
+### Local — native Llama via Ollama installed locally
+
+Run from the local/ directory:
 
 ```bash
-ollama serve &          # start in background
-ollama pull llama3.1:8b # once
+bash 1-ollama-run-llama-3.1-8b.sh
 
-python 3-analyze/analyze.py --transcript transcripts/my-video.txt --model llama3.1:8b
 ```
-
-Pipe directly from inference:
-
+In a separate terminal
 ```bash
-python 2-inference/infer.py --model_dir checkpoints/en --audio my-talk.mp3 | \
-    python 3-analyze/analyze.py --transcript -
+bash 2-llama-query-api.sh
+bash 3-llama-query-analyze.sh
 ```
-
-See `local/` for step-by-step scripts.
 
 ### Docker — CPU only
+> Docker Desktop on macOS cannot access Apple Metal. Ollama inside Docker uses CPU inference only. For faster results, use native Ollama and point `analyze.py` at `localhost:11434` (the default).
+
+Run from the docker/ directory.
 
 ```bash
 # 1. Start the Ollama service
@@ -36,47 +36,13 @@ docker compose run --rm dev python 3-analyze/analyze.py \
     --transcript results/infer-on-gpu.sh.txt \
     --ollama-host ollama:11434
 ```
-
-> Docker Desktop on macOS cannot access Apple Metal. Ollama inside Docker uses CPU inference only. For faster results, use native Ollama and point `analyze.py` at `localhost:11434` (the default).
-
-See `docker/` for step-by-step scripts.
-
 ### HPC — Ollama on GPU node (AMD/ROCm)
 
 A persistent Ollama service occupies one GPU node and serves the whole batch, eliminating per-task model-load overhead.
 
-#### Step 0 — build `ollama.sif` once
+Pull the ollama.sif file first: see `../../update-sifs.sh`
 
-```bash
-mkdir -p /tmp/$USER
-export SINGULARITY_TMPDIR=/tmp/$USER
-export SINGULARITY_CACHEDIR=/tmp/$USER
-singularity pull ollama.sif docker://ollama/ollama:rocm
-mv ollama.sif /scratch/project_465003359/$USER/
-```
-
-#### Step 1 — pull model weights into scratch
-
-```bash
-./3-analyze/hpc/3-ollama-pull-llama3.sh
-```
-
-#### Step 2 — start the persistent Ollama service
-
-```bash
-mkdir -p logs
-SVC=$(sbatch --parsable 3-analyze/hpc/2-ollama-serve-sbatch.sh)
-echo "Service job: $SVC"
-```
-
-#### Step 3 — submit the batch analysis array
-
-```bash
-N=$(find results/ -name "*.txt" | wc -l)
-sbatch --dependency=after:$SVC --array=0-$((N-1)) 3-analyze/hpc/analyze-batch.sh results/
-```
-
-The transcript folder argument can be any path (relative or absolute) — the script resolves it to an absolute path before mounting it inside the container. Output JSON files are written to `metadata/` at the project root.
+See hpc/ for step-by-step instructions.
 
 #### Interactive single transcript
 

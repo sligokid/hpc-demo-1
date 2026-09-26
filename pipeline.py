@@ -51,11 +51,9 @@ def _get_transcribe_with_segments():
     return mod.transcribe_with_segments
 
 
-def _call_embed(server_url: str, video_id: str, file_path: str, lang: str, segments: list):
+def _call_embed(server_url: str, segments: list) -> list:
+    """POST /embed → returns list of {text, ts_start, ts_end, vector}."""
     payload = {
-        "video_id": video_id,
-        "file": file_path,
-        "lang": lang,
         "chunks": [
             {
                 "text": s["text"],
@@ -65,7 +63,20 @@ def _call_embed(server_url: str, video_id: str, file_path: str, lang: str, segme
             for s in segments
         ],
     }
-    resp = requests.post(f"{server_url}/embed", json=payload, timeout=120)
+    resp = requests.post(f"{server_url}/embed", json=payload, timeout=600)
+    resp.raise_for_status()
+    return resp.json()["vectors"]
+
+
+def _call_index(server_url: str, video_id: str, file_path: str, lang: str, vectors: list) -> int:
+    """POST /index → returns indexed count."""
+    payload = {
+        "video_id": video_id,
+        "file": file_path,
+        "lang": lang,
+        "vectors": vectors,
+    }
+    resp = requests.post(f"{server_url}/index", json=payload, timeout=120)
     resp.raise_for_status()
     return resp.json()["indexed"]
 
@@ -82,7 +93,7 @@ def _get_analyze():
 
 
 def _get_run_sentiment():
-    mod = _import_from("sentiment", PROJECT_ROOT / "5-embed" / "sentiment.py")
+    mod = _import_from("sentiment", PROJECT_ROOT / "5-sentiment" / "sentiment.py")
     return mod.run_sentiment, mod._split_text
 
 
@@ -128,11 +139,15 @@ def main():
                         help="Process a single audio file (lang inferred from parent dir name)")
     parser.add_argument("--ollama-host", default=None,
                         help="Override ollama_host from config")
+    parser.add_argument("--analyze-model", default=None,
+                        help="Override analyze.model from config (e.g. llama3.1:8b)")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
     if args.ollama_host:
         cfg["analyze"]["ollama_host"] = args.ollama_host
+    if args.analyze_model:
+        cfg["analyze"]["model"] = args.analyze_model
 
     checkpoints = PROJECT_ROOT / cfg["checkpoints"]
     results = PROJECT_ROOT / cfg["results"]
@@ -142,6 +157,7 @@ def main():
     analyze_model = cfg["analyze"]["model"]
     embed_enabled = cfg.get("embed", {}).get("enabled", False)
     embed_url = os.getenv("EMBEDDING_SERVER_URL", cfg.get("embed", {}).get("server_url", "http://localhost:8765"))
+    index_url = os.getenv("INDEX_SERVER_URL", cfg.get("index", {}).get("server_url", "http://localhost:8766"))
     sentiment_enabled = cfg.get("sentiment", {}).get("enabled", False)
 
     if args.file:
@@ -239,14 +255,15 @@ def main():
             except Exception as exc:
                 print(f"  SENTIMENT ERROR — {exc}")
 
-        # --- Embed ---
+        # --- Embed + Index ---
         if embed_enabled and segments:
             video_id = f"{lang}/{stem}"
             try:
-                n = _call_embed(embed_url, video_id, str(audio_path), lang, segments)
+                vectors = _call_embed(embed_url, segments)
+                n = _call_index(index_url, video_id, str(audio_path), lang, vectors)
                 print(f"  embedded   -> {n} chunks indexed")
                 if metadata:
-                    _call_metadata(embed_url, video_id, str(audio_path), lang, metadata)
+                    _call_metadata(index_url, video_id, str(audio_path), lang, metadata)
                     print(f"  metadata   -> indexed")
             except Exception as exc:
                 print(f"  EMBED ERROR — {exc}")

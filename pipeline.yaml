@@ -23,14 +23,18 @@ infer:
 # --- Analyze stage ---
 analyze:
   enabled: true
-  model: llama3                     # Ollama model name
+  model: llama3:latest              # Ollama model name
   ollama_host: localhost:11434      # override per env (e.g. HPC endpoint file)
 
 # --- Sentiment stage (runs between analyze and embed) ---
 sentiment:
   enabled: true                      # set false to skip (e.g. HPC nodes without GPU)
 
-# --- Embed stage ---
+# --- Embed stage (6-embed: encodes text, returns raw vectors) ---
 embed:
   enabled: true
   server_url: http://localhost:8765  # embed-server endpoint
+
+# --- Index stage (7-index: receives vectors, writes to Qdrant) ---
+index:
+  server_url: http://localhost:8766  # index-server endpoint
