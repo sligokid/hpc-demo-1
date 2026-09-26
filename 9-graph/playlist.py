@@ -16,10 +16,10 @@ EU AI Act opt-out: --no-personalise (or "personalise": false in profile) returns
 unranked results and does not read or record watch history.
 
 Usage:
-    python 6-graph/playlist.py --user engineer@org.com --top-n 10
-    python 6-graph/playlist.py --user engineer@org.com --no-personalise
-    python 6-graph/playlist.py --user engineer@org.com --sentiment positive --top-n 5
-    python 6-graph/playlist.py --user engineer@org.com --qdrant-host localhost:6333
+    python 9-graph/playlist.py --user engineer@org.com --top-n 10
+    python 9-graph/playlist.py --user engineer@org.com --no-personalise
+    python 9-graph/playlist.py --user engineer@org.com --sentiment positive --top-n 5
+    python 9-graph/playlist.py --user engineer@org.com --qdrant-host localhost:6333
 """
 
 import argparse

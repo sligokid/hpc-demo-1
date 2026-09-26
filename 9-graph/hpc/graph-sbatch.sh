@@ -7,10 +7,10 @@
 #   E-qdrant service is running and has written the endpoint file.
 #
 # Submit from the project root:
-#   sbatch 6-graph/hpc/graph-sbatch.sh
-#   sbatch 6-graph/hpc/graph-sbatch.sh --user operative@org.com --top-n 5
-#   sbatch 6-graph/hpc/graph-sbatch.sh --user engineer@org.com --sentiment positive
-#   sbatch 6-graph/hpc/graph-sbatch.sh --no-personalise --user manager@org.com
+#   sbatch 9-graph/hpc/graph-sbatch.sh
+#   sbatch 9-graph/hpc/graph-sbatch.sh --user operative@org.com --top-n 5
+#   sbatch 9-graph/hpc/graph-sbatch.sh --user engineer@org.com --sentiment positive
+#   sbatch 9-graph/hpc/graph-sbatch.sh --no-personalise --user manager@org.com
 #
 # Flags (all optional, must come after the script name):
 #   --user USER         User profile (default: engineer@org.com)
@@ -37,7 +37,7 @@ SIF=${SIF:-$SCRATCH/embeddings-api.sif}
 QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
 # ---------------------
 
-# Resolve project root whether submitted from the project root or 6-graph/hpc/
+# Resolve project root whether submitted from the project root or 9-graph/hpc/
 if [ -f "$SLURM_SUBMIT_DIR/pipeline.yaml" ]; then
     PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
 else
@@ -82,7 +82,7 @@ echo "============================================"
 # --- Qdrant endpoint ---
 if [ ! -f "$QDRANT_ENDPOINT_FILE" ]; then
     echo "Error: Qdrant endpoint file not found at $QDRANT_ENDPOINT_FILE" >&2
-    echo "Start the Qdrant service first: sbatch 5-embed/hpc/qdrant-serve-sbatch.sh" >&2
+    echo "Start the Qdrant service first: sbatch 7-index/hpc/1-qdrant-serve-sbatch.sh" >&2
     exit 1
 fi
 QDRANT_HOST=$(cat "$QDRANT_ENDPOINT_FILE")
@@ -96,7 +96,7 @@ singularity exec \
     "$SIF" \
     bash -c "
 export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
-python /workspace/6-graph/graph.py \
+python /workspace/9-graph/graph.py \
     --qdrant-host \"$QDRANT_HOST\" \
     --output \"/workspace/$GRAPH_OUTPUT\"
 "
@@ -119,7 +119,7 @@ singularity exec \
     "$SIF" \
     bash -c "
 export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
-python /workspace/6-graph/playlist.py ${PLAYLIST_ARGS[*]}
+python /workspace/9-graph/playlist.py ${PLAYLIST_ARGS[*]}
 " | tee "$PROJECT_ROOT/$PLAYLIST_OUTPUT"
 
 echo ""

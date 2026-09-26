@@ -5,11 +5,11 @@
 # Prerequisites: Qdrant running and video_metadata collection populated.
 #
 # Usage:
-#   ./6-graph/create-playlist-graph.sh
-#   ./6-graph/create-playlist-graph.sh --user engineer@org.com --top-n 10
-#   ./6-graph/create-playlist-graph.sh --user operative@org.com --sentiment positive
-#   ./6-graph/create-playlist-graph.sh --no-personalise --user engineer@org.com
-#   ./6-graph/create-playlist-graph.sh --qdrant-host localhost:6333 --user manager@org.com
+#   ./9-graph/create-playlist-graph.sh
+#   ./9-graph/create-playlist-graph.sh --user engineer@org.com --top-n 10
+#   ./9-graph/create-playlist-graph.sh --user operative@org.com --sentiment positive
+#   ./9-graph/create-playlist-graph.sh --no-personalise --user engineer@org.com
+#   ./9-graph/create-playlist-graph.sh --qdrant-host localhost:6333 --user manager@org.com
 #
 # Flags (all optional):
 #   --user USER             User profile to generate playlist for (default: engineer@org.com)
@@ -58,7 +58,7 @@ echo ""
 
 # --- graph ---
 echo "--- graph.py ---"
-python 6-graph/graph.py \
+python 9-graph/graph.py \
   --qdrant-host "$QDRANT_HOST" \
   --output "$GRAPH_OUTPUT"
 
@@ -76,7 +76,7 @@ PLAYLIST_ARGS=(
 [ -n "$NO_PERSONALISE" ] && PLAYLIST_ARGS+=(--no-personalise)
 
 mkdir -p "$(dirname "$PLAYLIST_OUTPUT")"
-python 6-graph/playlist.py "${PLAYLIST_ARGS[@]}" | tee "$PLAYLIST_OUTPUT"
+python 9-graph/playlist.py "${PLAYLIST_ARGS[@]}" | tee "$PLAYLIST_OUTPUT"
 
 echo ""
 echo "=== Done ==="
