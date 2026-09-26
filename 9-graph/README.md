@@ -216,7 +216,9 @@ production_operative:
 
 ### Playlist
 
-**Tag quality is a hard dependency.** Both the role boost and the watch-history signal are computed from the `tags` field extracted by `analyze.py`. If Llama 3 produces inconsistent, generic, or missing tags for a video — or uses different vocabulary from `roles.yaml` (e.g. `"ppe"` vs `"personal-protective-equipment"`) — that video will score near zero regardless of its actual relevance. There is currently no tag normalisation or synonym expansion.
+**Tag quality is a hard dependency.** Both the role boost and the watch-history signal are computed from the `tags` field extracted by `analyze.py`. If Llama 3 produces inconsistent, generic, or missing tags for a video — or uses different vocabulary from `roles.yaml` (e.g. `"ppe"` vs `"personal-protective-equipment"`) — that video will score near zero regardless of its actual relevance. There is currently no synonym expansion.
+
+**`roles.yaml` must reflect the actual tag vocabulary used by the LLM.** Llama 3 extracts tags in its own phrasing (e.g. `"knowledge sharing"`, `"machine learning"`) which may differ significantly from the terms initially listed in `roles.yaml`. If all playlist scores are zero, the most likely cause is a vocabulary mismatch between `roles.yaml` and the tags stored in Qdrant. Inspect the `tags` field of a few records (scroll the `video_metadata` collection) and update `roles.yaml` to use the same terms. Tag comparison is case-insensitive — `"AI"` and `"ai"` will match — but spelling must be exact.
 
 **Watch history is additive but never decays.** Tags accumulate across all watched videos with equal weight. A user who watched 20 safety videos and 1 cooking video will have a history set still dominated by safety tags — but a user who watched the same 20 safety videos two years ago and has since moved into a management role will still be recommended safety content until their profile is manually updated. There is no time-weighting or role-change detection.
 

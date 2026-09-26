@@ -83,7 +83,7 @@ def load_all_metadata(qdrant: QdrantClient) -> list[dict]:
 
 
 def _tag_set(record: dict) -> set:
-    return set(record.get("tags") or [])
+    return {t.lower() for t in (record.get("tags") or [])}
 
 
 def score_candidates(
@@ -165,7 +165,7 @@ def build_playlist(
 
     # Personalised ranking
     role = profile.get("role", "")
-    role_tags = set(roles.get(role, []))
+    role_tags = {t.lower() for t in roles.get(role, [])}
 
     # Derive history tags from watched video records (implicit preference signal)
     watched_records = [
