@@ -7,6 +7,53 @@ Flask service that receives pre-computed vectors from `6-embed` and writes them 
 
 ---
 
+## Models Used
+
+None — this service performs no model inference. Vectors are received pre-computed from `6-embed` and written directly to Qdrant.
+
+---
+
+## How it Works
+
+1. **Receive** — `pipeline.py` posts the vector batch returned by `6-embed` to `POST /index`, along with `video_id`, `file`, and `lang`.
+2. **Upsert chunks** — each vector is stored as a point in the `video_chunks` Qdrant collection. The point ID is derived deterministically from `video_id` + chunk index using UUID5, so re-running the pipeline on the same file overwrites existing points cleanly.
+3. **Upsert metadata** — `pipeline.py` then calls `POST /metadata` with the analysis result from `3-analyze` merged with sentiment from `5-sentiment`. A single record is upserted to `video_metadata` keyed by `video_id`.
+4. **Collections** — both collections are created automatically on startup if they do not exist.
+
+**Concurrency:** Flask runs with `threaded=True` so multiple pipeline array tasks can write simultaneously.
+
+---
+
+## Sample Output
+
+`POST /index` response:
+
+```json
+{"indexed": 12}
+```
+
+`POST /metadata` response:
+
+```json
+{"indexed": 1}
+```
+
+After indexing, scroll the collections to verify:
+
+```bash
+# Chunks
+curl -s http://localhost:6333/collections/video_chunks/points/scroll \
+  -H 'Content-Type: application/json' \
+  -d '{"limit": 3, "with_payload": true, "with_vector": false}'
+
+# Metadata
+curl -s http://localhost:6333/collections/video_metadata/points/scroll \
+  -H 'Content-Type: application/json' \
+  -d '{"limit": 3, "with_payload": true, "with_vector": false}'
+```
+
+---
+
 ## Files
 
 | File | Description |
@@ -15,8 +62,8 @@ Flask service that receives pre-computed vectors from `6-embed` and writes them 
 | `test_index_server.py` | Unit tests (QdrantClient mocked) |
 | `local/1-start-qdrant.sh` | Start a local Qdrant instance via Docker |
 | `local/2-start-index-server.sh` | Start the index server locally with the venv |
-| `local/3-test-index-curl.sh` | Smoke-test the running server — indexes synthetic vectors, posts metadata, then scrolls both Qdrant collections to verify |
-| `local/4-scroll-collection.sh` | Inspect all indexed records — shows `sentiment_label`, `sentiment_score`, and `video_id` for every entry in `video_metadata` |
+| `local/3-test-index-curl.sh` | Smoke-test — indexes synthetic vectors, posts metadata, scrolls both collections to verify |
+| `local/4-scroll-collection.sh` | Inspect all indexed records in `video_metadata` |
 | `hpc/1-qdrant-serve-sbatch.sh` | SLURM service job — runs Qdrant inside Singularity on LUMI |
 | `hpc/2-index-serve-sbatch.sh` | SLURM service job — runs the index server on a CPU node on LUMI |
 | `docker/Dockerfile` | `linux/amd64` lightweight image (no PyTorch) |
@@ -27,8 +74,6 @@ Flask service that receives pre-computed vectors from `6-embed` and writes them 
 ## API
 
 ### `GET /health`
-
-Liveness check.
 
 ```
 200 OK
@@ -57,11 +102,9 @@ Write a batch of pre-computed vectors to the `video_chunks` collection.
 {"indexed": 2}
 ```
 
-Point IDs are derived deterministically from `video_id` and chunk index using UUID5, so re-running the pipeline on the same file overwrites existing points rather than creating duplicates.
-
 ### `POST /metadata`
 
-Write a single metadata record to the `video_metadata` collection. Accepts any JSON dict — all fields are stored as payload. Typical fields come from `3-analyze` (`title`, `description`, `tags`, `uploaded_by`) plus `5-sentiment` (`sentiment_label`, `sentiment_score`).
+Write a single metadata record to the `video_metadata` collection.
 
 **Request:**
 ```json
@@ -81,18 +124,16 @@ Write a single metadata record to the `video_metadata` collection. Accepts any J
 {"indexed": 1}
 ```
 
-The point ID is derived from `video_id` using UUID5, so reruns overwrite cleanly.
-
 ---
 
-## Qdrant collections
+## Qdrant Collections
 
 Both collections are created automatically on startup if they do not exist.
 
 | Collection | Vector dim | Distance | Purpose |
 |---|---|---|---|
 | `video_chunks` | 1024 | Cosine | One point per transcript chunk — searched by `8-search` |
-| `video_metadata` | 1 (placeholder) | Cosine | One point per video — read by `9-graph` for the knowledge graph and playlist |
+| `video_metadata` | 1 (placeholder) | Cosine | One point per video — scrolled by `9-graph` for the knowledge graph and playlist |
 
 The `video_metadata` collection uses a 1-dim placeholder vector; it is never queried by vector — only scrolled by payload filter.
 
@@ -105,7 +146,6 @@ The `video_metadata` collection uses a 1-dim placeholder vector; it is never que
 ```bash
 # 1. Start Qdrant
 7-index/local/1-start-qdrant.sh
-# → http://localhost:6333  (dashboard: http://localhost:6333/dashboard)
 
 # 2. Start the index server (blocks — run in a separate terminal)
 7-index/local/2-start-index-server.sh
@@ -113,21 +153,15 @@ The `video_metadata` collection uses a 1-dim placeholder vector; it is never que
 # 3. Smoke-test with synthetic vectors (no embed-server needed)
 7-index/local/3-test-index-curl.sh
 
-# 4. After running the pipeline, inspect what was indexed
+# 4. Inspect what was indexed
 7-index/local/4-scroll-collection.sh
-```
-
-Override the Qdrant host if it is running elsewhere:
-
-```bash
-QDRANT_HOST=http://10.0.0.5:6333 7-index/local/3-scroll-collection.sh
 ```
 
 ---
 
 ## Docker
 
-The image has no PyTorch dependency — it installs only `flask` and `qdrant-client`, so it builds in seconds and stays small.
+The image has no PyTorch dependency — only `flask` and `qdrant-client`, so it builds quickly and stays small.
 
 ```bash
 # Build locally
@@ -147,7 +181,7 @@ Two SLURM jobs are required: Qdrant and the index server. Both write endpoint fi
 
 ### 1. Qdrant (`hpc/1-qdrant-serve-sbatch.sh`)
 
-Runs Qdrant inside Singularity on a `small-g` GPU node. Storage is persisted to `$SCRATCH/qdrant-storage` across job restarts.
+Runs Qdrant inside Singularity on a `small-g` GPU node. Storage is persisted to `$SCRATCH/qdrant-storage`.
 
 **Prerequisites:** SIF pulled:
 
@@ -155,8 +189,6 @@ Runs Qdrant inside Singularity on a `small-g` GPU node. Storage is persisted to 
 singularity pull /scratch/project_465003359/mcgowank/qdrant.sif \
     docker://qdrant/qdrant:latest
 ```
-
-**Submit:**
 
 ```bash
 sbatch 7-index/hpc/1-qdrant-serve-sbatch.sh
@@ -166,39 +198,33 @@ Once healthy, writes `$SCRATCH/qdrant.endpoint` containing `<hostname>:6333`.
 
 ### 2. Index server (`hpc/2-index-serve-sbatch.sh`)
 
-Runs on a `small` CPU-only node — no GPU or Singularity needed. Reads `$SCRATCH/qdrant.endpoint` to locate Qdrant and fails fast if that file is absent.
-
-**Submit after Qdrant is ready:**
+Runs on a `small` CPU-only node. Reads `$SCRATCH/qdrant.endpoint` to locate Qdrant and fails fast if that file is absent.
 
 ```bash
+# Submit after Qdrant is ready
 sbatch 7-index/hpc/2-index-serve-sbatch.sh
-```
 
-**Or chain both with a dependency:**
-
-```bash
+# Or chain with a dependency
 JID=$(sbatch --parsable 7-index/hpc/1-qdrant-serve-sbatch.sh)
 sbatch --dependency=after:$JID 7-index/hpc/2-index-serve-sbatch.sh
 ```
 
 Once healthy, writes `$SCRATCH/index.endpoint` containing `<hostname>:8766`.
 
-Both jobs stay alive until wall time (8 hours). Logs go to `logs/qdrant-slurm-<jobid>.out` and `logs/index-slurm-<jobid>.out`.
+Logs go to `logs/qdrant-slurm-<jobid>.out` and `logs/index-slurm-<jobid>.out`.
 
 ---
 
 ## Pipeline integration
 
-`pipeline.py` calls `POST /index` with the vectors returned by `6-embed`, then calls `POST /metadata` with the analysis result from `3-analyze` merged with the sentiment result from `5-sentiment`.
-
 ```
 … → Embed (6-embed) → Index (7-index) → …
-                              ↓
-                          Qdrant
-                        (video_chunks,
-                        video_metadata)
-                              ↓
-                   Search (8-search) / Graph (9-graph)
+                             ↓
+                         Qdrant
+                       (video_chunks,
+                       video_metadata)
+                             ↓
+                  Search (8-search) / Graph (9-graph)
 ```
 
 Configure in `pipeline.yaml`:
@@ -210,12 +236,3 @@ index:
 
 Override at runtime with the `INDEX_SERVER_URL` environment variable.
 
----
-
-## Tests
-
-```bash
-pytest 7-index/ -v
-```
-
-QdrantClient is mocked throughout — no running Qdrant instance required.

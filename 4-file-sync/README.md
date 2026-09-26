@@ -12,6 +12,53 @@ Polls Google Drive every 5 minutes via a self-resubmitting SLURM job.
 
 ---
 
+## Models Used
+
+None — this stage performs no model inference. It uses `rclone` to transfer files between Google Drive and LUMI scratch storage.
+
+---
+
+## How it Works
+
+Each sync cycle runs the following steps in order:
+
+1. **Inbound sync** — `rclone copy gdrive:whisper-sync/input/ sync/input/` downloads any new files from Google Drive. rclone skips files already present (size/mtime comparison) so only genuinely new files are transferred.
+2. **Manifest update** — each newly downloaded filename is appended to `logs/sync-manifest.txt`. Files already listed in the manifest are skipped to prevent reprocessing on subsequent cycles.
+3. **Outbound sync** — `rclone copy sync/output/ gdrive:whisper-sync/output/` uploads processed results (transcripts, analysis JSON, graph HTML) back to Google Drive.
+4. **Self-resubmit** — the SLURM job resubmits itself with a 5-minute delay via `trap ... EXIT`. The chain runs indefinitely without crontab or manual intervention.
+
+The pipeline (`Z-poll`) reads `logs/sync-manifest.txt` on each cycle and submits a new array job for any file not yet marked `.done`.
+
+---
+
+## Sample Output
+
+A typical sync log (`logs/sync-slurm-<jobid>.out`) looks like:
+
+```
+============================================
+Job ID : 22341234
+Node   : uan01
+Started: 2026-09-26T02:10:00Z
+============================================
+[inbound]  Transferred: 1 / 1, 100%
+  sync/input/en/IDA part 2.mp4
+[manifest] 1 new file(s) added to logs/sync-manifest.txt
+[outbound] Transferred: 3 / 3, 100%
+  sync/output/en/IDA part 2.transcript.txt
+  sync/output/en/IDA part 2.analysis.json
+  sync/output/en/IDA part 2.sentiment.json
+Done. Next sync in 5 minutes.
+```
+
+`logs/sync-manifest.txt` accumulates all files seen across all cycles:
+
+```
+sync/input/en/IDA part 1.mp4
+sync/input/en/IDA part 2.mp4
+sync/input/en/Intro to Slick+.mp4
+```
+
 ## Prerequisites
 
 - Docker installed locally (with `buildx` support)
@@ -20,6 +67,8 @@ Polls Google Drive every 5 minutes via a self-resubmitting SLURM job.
 - A Google account
 
 ---
+
+
 
 ## 1. Create a GCP project and enable the Drive API
 
