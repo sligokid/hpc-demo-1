@@ -6,50 +6,26 @@ CLI tool for querying the indexed video transcript chunks in Qdrant. Encodes the
 
 ---
 
-## Files
+## Models Used
 
-| File | Description |
-|---|---|
-| `search.py` | Encodes a query and runs a nearest-neighbour search against `video_chunks` |
-| `test_search.py` | Unit tests (SentenceTransformer and QdrantClient mocked) |
-| `local/1-search.sh` | Convenience wrapper — runs a query from the project root |
+| Model | Source | Role |
+|-------|--------|------|
+| `intfloat/multilingual-e5-large` | [HuggingFace](https://huggingface.co/intfloat/multilingual-e5-large) | Encodes the search query into a 1024-dim vector for nearest-neighbour lookup |
+
+Must match the model used by `6-embed` at index time — using a different model will produce incompatible vectors and poor results. Query text is prefixed with `query:` before encoding (as required by E5).
 
 ---
 
-## How it works
+## How it Works
 
-1. The query string is prefixed with `query:` and encoded with `multilingual-e5-large` (`normalize_embeddings=True`). This asymmetric prefix is the counterpart to the `passage:` prefix applied to chunks at index time — omitting it degrades retrieval quality.
+1. The query string is prefixed with `query:` and encoded with `multilingual-e5-large` (`normalize_embeddings=True`). This asymmetric prefix is the counterpart to the `passage:` prefix applied at index time — omitting it degrades retrieval quality.
 2. The resulting 1024-dim vector is sent to Qdrant's `query_points` against the `video_chunks` collection.
 3. If `--lang` is supplied, a payload filter restricts results to chunks whose `lang` field matches exactly.
 4. The top-k hits are returned as a JSON array, scored and sorted by cosine similarity (highest first).
 
 ---
 
-## Usage
-
-```bash
-# Basic query — top 5 results
-python 8-search/search.py --query "how to isolate a circuit before working on it"
-
-# Filter to Spanish content
-python 8-search/search.py --query "cómo aislar un circuito" --lang es
-
-# Retrieve more results
-python 8-search/search.py --query "onboarding procedures" --top-k 10
-
-# Point at a remote Qdrant instance
-python 8-search/search.py --query "safety risk assessment" --qdrant-host 10.0.0.5:6333
-```
-
-Or via the convenience wrapper (passes `$1` as the query, with a default):
-
-```bash
-8-search/local/1-search.sh "how can i find out more about the club"
-```
-
----
-
-## Output
+## Sample Output
 
 JSON array printed to stdout, one object per result, ordered by descending score:
 
@@ -79,22 +55,46 @@ JSON array printed to stdout, one object per result, ordered by descending score
 
 ---
 
-## Limitations
+## Files
 
-**Model loads from disk on every call.** `multilingual-e5-large` is ~2 GB. Each invocation of `search.py` loads it fresh, waits for it to initialise, runs one query, then exits. For interactive use or latency-sensitive applications, wrap `search()` in a long-lived process or expose it as a service endpoint.
-
-**Language filter is exact-match on the stored `lang` payload field.** The value must match exactly what was written at index time (e.g. `"en"`, `"es"`, `"zh"`). There is no fallback to cross-lingual search if no results exist for the requested language.
-
-**No result deduplication.** If a video was indexed multiple times (e.g. after a pipeline re-run), duplicate chunks can appear in results. IDs are deterministic so re-indexing overwrites existing points, but if `video_id` changed between runs both versions will be present.
-
-**`top_k` is a hard limit, not a score threshold.** Results below a meaningful similarity score are returned alongside high-confidence hits. Callers should apply their own score cutoff if low-relevance results are a problem.
+| File | Description |
+|---|---|
+| `search.py` | Encodes a query and runs a nearest-neighbour search against `video_chunks` |
+| `test_search.py` | Unit tests (SentenceTransformer and QdrantClient mocked) |
+| `local/1-search.sh` | Convenience wrapper — runs a query from the project root |
 
 ---
 
-## Tests
+## Running locally
 
 ```bash
-pytest 8-search/ -v
+# Basic query — top 5 results
+python 8-search/search.py --query "how to isolate a circuit before working on it"
+
+# Filter to Spanish content
+python 8-search/search.py --query "cómo aislar un circuito" --lang es
+
+# Retrieve more results
+python 8-search/search.py --query "onboarding procedures" --top-k 10
+
+# Point at a remote Qdrant instance
+python 8-search/search.py --query "safety risk assessment" --qdrant-host 10.0.0.5:6333
 ```
 
-SentenceTransformer and QdrantClient are both mocked — no model weights or running Qdrant instance required.
+Or via the convenience wrapper:
+
+```bash
+8-search/local/1-search.sh "how can i find out more about the club"
+```
+
+---
+
+## Limitations
+
+**Model loads from disk on every call.** `multilingual-e5-large` is ~2 GB. Each invocation loads it fresh, runs one query, then exits. For interactive or latency-sensitive use, wrap `search()` in a long-lived process or expose it as a service endpoint.
+
+**Language filter is exact-match.** The `--lang` value must match exactly what was written at index time (e.g. `"en"`, `"es"`). There is no fallback to cross-lingual search if no results exist for the requested language.
+
+**No result deduplication.** If a video was indexed multiple times with a different `video_id`, duplicate chunks can appear in results. IDs are deterministic so re-indexing with the same `video_id` overwrites existing points cleanly.
+
+**`top_k` is a hard limit, not a score threshold.** Low-relevance results are returned alongside high-confidence hits. Apply your own score cutoff if needed.

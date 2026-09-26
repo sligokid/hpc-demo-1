@@ -1,19 +1,20 @@
 # 5-sentiment — Sentiment Analysis
 
-Classifies overall video tone before content reaches the vector database. Runs `cardiffnlp/twitter-roberta-base-sentiment-latest` over transcript chunks and aggregates to a per-video `sentiment_label` and `sentiment_score` that are stored in the `video_metadata` Qdrant collection.
+Classifies overall video tone before content reaches the vector database. Runs `cardiffnlp/twitter-roberta-base-sentiment-latest` over transcript chunks and aggregates to a per-video `sentiment_label` and `sentiment_score` stored in the `video_metadata` Qdrant collection.
 
 ---
 
-## Files
+## Models Used
 
-| File | Description |
-|---|---|
-| `sentiment.py` | HuggingFace sentiment classifier — aggregates per-chunk labels to a video-level score |
-| `test_sentiment.py` | Unit tests for `sentiment.py` (HuggingFace pipeline mocked) |
+| Model | Source | Role |
+|-------|--------|------|
+| `cardiffnlp/twitter-roberta-base-sentiment-latest` | [HuggingFace](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest) | Classifies each transcript chunk as positive / neutral / negative |
+
+Downloaded automatically by HuggingFace on first run and cached in `$HF_HOME` (default `~/.cache/huggingface`).
 
 ---
 
-## How it works
+## How it Works
 
 **Chunking:** The transcript is split on sentence boundaries into ~200-word windows. Whisper segment dicts (with a `text` key) are accepted directly — no re-splitting needed when segments come from `2-inference/infer.py`.
 
@@ -30,7 +31,34 @@ Classifies overall video tone before content reaches the vector database. Runs `
 
 ---
 
-## Standalone usage
+## Sample Output
+
+`sentiment.py` returns a dict written to `sync/output/<lang>/<filename>.sentiment.json`:
+
+```json
+{
+  "sentiment_label": "positive",
+  "sentiment_score": 0.6821
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `sentiment_label` | `positive` / `neutral` / `negative` | Majority-vote label across all transcript chunks |
+| `sentiment_score` | float, `[−1.0, 1.0]` | Mean signed polarity — positive chunks add, negative chunks subtract, neutral contribute 0 |
+
+---
+
+## Files
+
+| File | Description |
+|---|---|
+| `sentiment.py` | HuggingFace sentiment classifier — aggregates per-chunk labels to a video-level score |
+| `test_sentiment.py` | Unit tests for `sentiment.py` (HuggingFace pipeline mocked) |
+
+---
+
+## Running locally
 
 ```bash
 python 5-sentiment/sentiment.py --transcript sync/output/en/my-video.transcript.txt
@@ -58,16 +86,6 @@ sentiment:
 
 ---
 
-## Limitations
-
-**General-purpose model.** `twitter-roberta-base-sentiment-latest` was trained on tweets, not L&D transcripts. Corporate safety language ("isolate before re-energising") reads as neutral even when it is describing a critical risk. The majority-vote aggregation amplifies this: a video that is 70% factual procedure and 30% serious warnings will almost certainly be labelled `neutral`.
-
-**Chunk boundaries ignore semantic coherence.** Splitting on sentence boundaries at a fixed word count can cut a single thought across two chunks, diluting the signal for both. Whisper segment dicts (which correspond to actual speech pauses) produce more natural boundaries — use `embed_enabled: true` in `pipeline.yaml` to pass segments rather than plain text.
-
-**`sentiment_score` is not a probability.** It is a signed weighted mean that compresses all per-chunk signals into a single scalar. A score of `0.3` could mean every chunk scored mildly positive, or half the chunks scored strongly positive and half scored strongly negative. The distribution of chunk-level scores is not stored.
-
----
-
 ## Tests
 
 ```bash
@@ -75,3 +93,13 @@ pytest 5-sentiment/ -v
 ```
 
 No GPU, model weights, or external services required — the HuggingFace pipeline is mocked throughout.
+
+---
+
+## Limitations
+
+**General-purpose model.** `twitter-roberta-base-sentiment-latest` was trained on tweets, not L&D transcripts. Corporate safety language ("isolate before re-energising") reads as neutral even when it is describing a critical risk. The majority-vote aggregation amplifies this: a video that is 70% factual procedure and 30% serious warnings will almost certainly be labelled `neutral`.
+
+**Chunk boundaries ignore semantic coherence.** Splitting on sentence boundaries at a fixed word count can cut a single thought across two chunks, diluting the signal for both.
+
+**`sentiment_score` is not a probability.** It is a signed weighted mean that compresses all per-chunk signals into a single scalar. A score of `0.3` could mean every chunk scored mildly positive, or half the chunks scored strongly positive and half scored strongly negative. The distribution of chunk-level scores is not stored.
