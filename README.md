@@ -2,175 +2,95 @@
 
 **Goal: Turning speech & video into machine-readable knowledge at HPC scale.**
 
+---
 
-
+## Pipeline Overview
 
 ```
-  ┌─────────────────────────────────────────────────────────┐
-  │                    STAGE 1: TRAINING                    │
-  │   Fine-tune Whisper (GPU) on Google FLEURS              │
-  │   en, es, fr, zh-CN, ar (5 parallel SLURM tasks)        │
-  └────────────────────────────┬────────────────────────────┘
-                               │  
-                               ▼
-                      checkpoints/<lang>
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                          STAGE 1: TRAINING                               │
+  │  Fine-tune openai/whisper-small on Google FLEURS                         │
+  │  en · es · fr · zh-CN · ar  (5 parallel SLURM GPU jobs)                  │
+  └──────────────────────────────┬───────────────────────────────────────────┘
+                                 │  checkpoints/<lang>/
+                                 ▼
+─────────────────────────────────────────────────────────────────────────────
 
-─────────────────────────────────────────────────────────────
-
-  ┌─────────────────────┐
-  │   Google Drive      │◄── [ Upload mp3/mp4/wav/flac/m4a/ogg ]
-  │  whisper-sync/input │
-  └──────────┬──────────┘
-             │  rclone (every 5 min via sync-sbatch.sh)
-             ▼
-  ┌─────────────────────┐
-  │   LUMI HPC Scratch  │
-  │     sync/input/     │
-  └──────────┬──────────┘
-             │  pipeline-hpc-poll.sh (every 10 min)
-             ▼
-  ┌─────────────────────┐
-  │ STAGE 2: TRANSCRIBE │
-  │ Whisper (AMD/ROCm)  │──► sync/output/<lang>/<stem>.transcript.txt
-  └──────────┬──────────┘
-             │
-             ▼
-  ┌─────────────────────┐
-  │  STAGE 3: EXTRACT   │
-  │  Llama 3 via Ollama │──► sync/output/<lang>/<stem>.analysis.json
-  │  (GPU daemon)       │    (title, description, tags, goals, skills)
-  └──────────┬──────────┘
-             │  rclone (every 5 min via sync-sbatch.sh)
-             ▼
-  ┌─────────────────────┐
-  │   Google Drive      │◄── [ Download Transcripts & Metadata JSON ]
-  │  whisper-sync/output│
-  └─────────────────────┘
+  ┌──────────────────┐
+  │   Google Drive   │◄── [ Upload mp3 / mp4 / wav / flac / m4a / ogg ]
+  │ whisper-sync/    │
+  │   input/         │
+  └────────┬─────────┘
+           │  rclone (C-sync · every 5 min)
+           ▼
+  ┌──────────────────┐
+  │  LUMI HPC        │
+  │   sync/input/    │
+  └────────┬─────────┘
+           │  Z-poll (every 10 min) → pipeline-hpc-submit.sh → SLURM array
+           ▼
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                        STAGE 2: TRANSCRIBE                               │
+  │  infer.py — Whisper (AMD/ROCm GPU, fine-tuned checkpoint)                │
+  │  Chunked 30s windows · any-length audio · 5-second overlap               │
+  └──────────────────────────────┬───────────────────────────────────────────┘
+                                 │  sync/output/<lang>/<stem>.transcript.txt
+                                 │                         .segments.json
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                         STAGE 3: ANALYSE                                 │
+  │  analyze.py — Llama 3 via Ollama (B-ollama GPU daemon)                   │
+  │  Extracts: title · description · tags · goals · skills                   │
+  └──────────────────────────────┬───────────────────────────────────────────┘
+                                 │  sync/output/<lang>/<stem>.analysis.json
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                        STAGE 5: SENTIMENT                                │
+  │  sentiment.py — cardiffnlp/twitter-roberta-base-sentiment-latest         │
+  │  Majority-vote label + signed mean score across transcript chunks         │
+  └──────────────────────────────┬───────────────────────────────────────────┘
+                                 │  { sentiment_label, sentiment_score }
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                          STAGE 6: EMBED                                  │
+  │  embed_server.py — intfloat/multilingual-e5-large (D-embed · port 8765)  │
+  │  Encodes transcript chunks → 1024-dim L2-normalised vectors              │
+  └──────────────────────────────┬───────────────────────────────────────────┘
+                                 │  { vectors: [{text, ts_start, ts_end, vector}] }
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                          STAGE 7: INDEX                                  │
+  │  index_server.py — Flask (F-index · port 8766)                           │
+  │  Writes chunk vectors → Qdrant video_chunks                              │
+  │  Writes video metadata → Qdrant video_metadata  (E-qdrant · port 6333)  │
+  └──────────────────────────────┬───────────────────────────────────────────┘
+                                 │
+                    ┌────────────┴─────────────┐
+                    ▼                           ▼
+  ┌────────────────────────┐   ┌───────────────────────────────────────────┐
+  │      STAGE 8: SEARCH   │   │               STAGE 9: GRAPH              │
+  │  search.py             │   │  graph.py — knowledge graph (nodes/edges) │
+  │  Semantic nearest-     │   │  playlist.py — ranked personalised        │
+  │  neighbour lookup over │   │  playlist from video_metadata             │
+  │  video_chunks          │   │  (G-graph)                                │
+  └────────────────────────┘   └───────────────────────────────────────────┘
+                                 │
+           rclone (C-sync · every 5 min)
+                                 ▼
+  ┌──────────────────┐
+  │   Google Drive   │◄── sync/output/ (transcripts · analysis · graph.html)
+  │ whisper-sync/    │
+  │   output/        │
+  └──────────────────┘
 ```
+
+> **Note:** Stage 4 (file sync) is the background rclone loop — not an inline processing stage. It feeds `sync/input/` and drains `sync/output/` independently on a 5-minute cycle.
 
 ---
 
-## Repository Structure
+## Local Development
 
-| Directory / File | Description |
-|---|---|
-| [`1-train/`](1-train/README.md) | Whisper fine-tuning on FLEURS (local, Docker, and HPC SLURM array jobs) |
-| [`2-inference/`](2-inference/README.md) | Audio transcription and ES→EN translation (`infer.py`, chunked 30s processing) |
-| [`3-analyze/`](3-analyze/README.md) | Structured metadata extraction using Llama 3 via Ollama API (`analyze.py`) |
-| [`4-file-sync/`](4-file-sync/README.md) | Bi-directional cloud file sync with Google Drive / S3 / GCS via rclone |
-| [`pipeline.py`](pipeline.py) | End-to-end Python pipeline orchestrator (processes `sync/input` → `sync/output`) |
-| [`pipeline.yaml`](pipeline.yaml) | Central pipeline configuration file |
-| `pipeline-local.sh` | Run the full pipeline locally with native Python & Ollama |
-| `pipeline-docker.sh` | Run the full pipeline locally inside Docker Compose |
-| `pipeline-hpc-submit.sh` | Generate manifest and submit SLURM array jobs on HPC |
-| `pipeline-hpc-sbatch.sh` | SLURM GPU task wrapper executing `pipeline.py` inside Singularity SIF |
-| `pipeline-hpc-poll.sh` | Self-resubmitting scheduler polling for new files every 10 minutes |
-
----
-
-## Supported Languages
-
-| Code | Language | FLEURS Locale | Checkpoint Path |
-|---|---|---|---|
-| `en` | English | `en_us` | `checkpoints/en` |
-| `es` | Spanish | `es_419` | `checkpoints/es` |
-| `fr` | French | `fr_fr` | `checkpoints/fr` |
-| `zh-CN` | Mandarin | `cmn_hans_cn` | `checkpoints/zh` |
-| `ar` | Arabic | `ar_eg` | `checkpoints/ar` |
-
----
-
-## Automated HPC Pipeline (LUMI)
-
-The full end-to-end processing pipeline runs unattended on LUMI HPC using self-resubmitting SLURM jobs:
-
-```
-Google Drive                      LUMI HPC Scratch
-────────────                      ─────────────────────────────────────────────────
-whisper-sync/                     4-file-sync/hpc/sync-sbatch.sh (every 5 min)
-  input/   ─── rclone copy ────►  sync/input/
-  output/  ◄── rclone copy ─────  sync/output/
-
-                                  pipeline-hpc-poll.sh (every 10 min)
-                                  └─► pipeline-hpc-submit.sh
-                                      └─► pipeline-hpc-sbatch.sh (1 GPU per audio file)
-                                          ├─► 2-inference/infer.py  (Whisper transcription)
-                                          └─► 3-analyze/analyze.py  (Ollama Llama 3 metadata)
-```
-
-### 1. Launch the Automated Loop on LUMI
-
-**Prerequisites:** Singularity containers built in scratch (`whisper-hpc.sif`, `whisper-sync.sif`, `ollama.sif`) and rclone config copied to `~/.config/rclone/rclone.conf`.
-
-```bash
-cd /scratch/project_465003359/mcgowank/hpc-demo-1
-
-# 1. Start the persistent Ollama GPU service (self-resubmits every 8 hours) : A-ollama
-sbatch 3-analyze/hpc/2-ollama-serve-sbatch.sh
-
-# 2. Start the file sync loop (polls Google Drive every 5 minutes): B-sync
-sbatch 4-file-sync/hpc/sync-sbatch.sh
-
-# 3. Start the pipeline poller (scans sync/input/ and launches jobs every 10 minutes): C-poll
-sbatch pipeline-hpc-poll.sh
-```
-
-#### A-ollama, B-sync, C-poll should be running permanently and pipeline job(s) will appear when files are detected
-```
-Every 2.0s: squeue --me                                                  uan18: Wed Sep 16 18:04:21 2026
-
-             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
-          22100106     small   C-poll mcgowank PD       0:00      1 (BeginTime)
-          22100150     small   B-sync mcgowank PD       0:00      1 (BeginTime)
-          22100084   small-g A-ollama mcgowank  R       5:45      1 nid005030
-```
-
-> **Note:** Wait for the Ollama job to move from `PD` (pending) to `R` (running) and write `/scratch/project_465003359/mcgowank/ollama.endpoint` before processing starts.
-
-> **FIXME:** There is a race condition between C-poll and the launched pipeline jobs where duplicate jobs are submitted if the file processing has not completed before the next poll. This is relatively harmless as the longer running file will eventually finish and set the .done file. Howver it could become a poison pill for the GPU resources if there's a run away pipeline job. 
-
-### 2. Manual Batch Submission (On-Demand)
-
-To process pending files immediately without waiting for the poller:
-
-```bash
-# Process all pending files across all languages
-./pipeline-hpc-submit.sh
-
-# Restrict to a specific language
-./pipeline-hpc-submit.sh --lang en
-
-# Chain with Ollama service job ID
-JID=$(sbatch --parsable 3-analyze/hpc/2-ollama-serve-sbatch.sh)
-./pipeline-hpc-submit.sh --dependency after:$JID
-```
-
-### 3. Monitoring & Management
-
-```bash
-# View active and queued SLURM jobs
-squeue -u $USER
-
-# Monitor logs
-tail -f logs/sync-slurm-<jobid>.out             # File sync log
-tail -f logs/poll-slurm-<jobid>.out             # Pipeline poller log
-tail -f logs/<jobid>_<taskid>.out               # Individual file processing log
-
-# Check manifests
-cat logs/sync-manifest.txt                      # Files synced from Google Drive
-cat logs/pipeline-manifest-*.txt                # Files submitted for HPC processing
-
-# Cancel all user jobs
-scancel -u $USER
-```
-
----
-
-## Local Development & Testing
-
-### Setup Native Environment (macOS / Linux)
-
-PyTorch uses Apple Silicon MPS or Linux CUDA automatically.
+### Setup
 
 ```bash
 python3 -m venv venv
@@ -180,99 +100,210 @@ pip install -r requirements.txt
 
 ### Run Full Pipeline Locally
 
-Start Ollama in a separate terminal:
+Start required services (each in its own terminal):
+
 ```bash
-ollama serve
-ollama pull llama3.1:8b  # or llama3
+ollama serve && ollama pull llama3.1:8b   # Llama 3 for 3-analyze
+docker run -p 6333:6333 qdrant/qdrant     # Qdrant for 7-index / 8-search / 9-graph
+6-embed/local/1-start-embed-server.sh     # embedding server (port 8765)
+7-index/local/2-start-index-server.sh     # index server (port 8766)
 ```
 
-Run the pipeline orchestrator:
+Then run the pipeline:
+
 ```bash
-# Process all audio files in sync/input/
 ./pipeline-local.sh
 
-# Or run pipeline.py with options
+# Or run directly with options
 python pipeline.py --lang en
-python pipeline.py --file sync/input/en/sample.mp3 --ollama-host localhost:11434
-```
-
-Quick one-line pipe demo:
-```bash
-bash pipeline-demo-local.sh
+python pipeline.py --file sync/input/en/sample.mp3
 ```
 
 ### Run via Docker Compose
 
-**To build update and push a new image with amd64 support** edit `requirements.txt` or the `Dockerfile`, then rebuild and push:
-
 ```bash
-# Local development image
-docker build -t sligokid/hpc-demo-1:latest .
-
-# Multi-arch amd64 image for HPC deployment
-docker buildx build --platform linux/amd64 -t sligokid/whisper-hpc:latest --push .
+docker compose up
 ```
 
-### 2. Convert Whisper Image(`whisper-hpc`) to Singularity SIF (HPC)
-
-On LUMI worker node (using memory-backed cache in `/tmp`):
-
-```bash
-mkdir -p /tmp/$USER
-export SINGULARITY_TMPDIR=/tmp/$USER
-export SINGULARITY_CACHEDIR=/tmp/$USER
-
-singularity pull /scratch/project_465003359/mcgowank/whisper-hpc.sif docker://sligokid/whisper-hpc:latest
-```
-
-### 3. Build & Convert Cloud Sync Image (`whisper-sync`)
-
-```bash
-# Build amd64 sync image locally and push
-docker buildx build --platform linux/amd64 -t sligokid/whisper-sync:latest --push 4-file-sync/
-
-# Pull SIF on LUMI
-singularity pull /scratch/project_465003359/mcgowank/whisper-sync.sif docker://sligokid/whisper-sync:latest
-```
-
-### 4. Pull Ollama ROCm SIF (HPC) Image (`ollama`)
-
-```bash
-singularity pull /scratch/project_465003359/mcgowank/ollama.sif docker://ollama/ollama:rocm
-```
+All services (Ollama, Qdrant, embed-server, index-server, dev) are defined in `docker-compose.yml`.
 
 ---
 
 ## Testing
 
 ```bash
-# Run Python unit tests for infer & analyze
+# Unit tests — all stages
 pytest 2-inference/test_infer.py
 pytest 3-analyze/test_analyze.py
+pytest 5-sentiment/
+pytest 6-embed/
+pytest 7-index/
+pytest 8-search/
+pytest 9-graph/
 
-# Run mock sync smoke tests
+# Or run all at once
+pytest 2-inference/ 3-analyze/ 5-sentiment/ 6-embed/ 7-index/ 8-search/ 9-graph/
+
+# Smoke tests
 bash 4-file-sync/test-sync.sh
+bash 7-index/local/3-test-index-curl.sh
 
-# Run shell script test suite (BATS)
+# Shell script tests (BATS)
 make test
+```
+
+No GPU, model weights, or running services required for unit tests — all external dependencies are mocked.
+
+---
+
+### Launch the Pipeline Locally (Docker)
+
+**Prerequisites:** Docker Desktop running, `rclone` installed and configured (see [`4-file-sync/README.md`](4-file-sync/README.md)).
+
+```bash
+# Start (or restart) all persistent services — ollama, qdrant, embed-server, index-server
+./restart-services-docker.sh
+
+# Rebuild images first if you've changed code
+./restart-services-docker.sh --build
+```
+
+Services and ports once healthy:
+
+| Service | Port | Dashboard |
+|---|---|---|
+| `ollama` | 11434 | — |
+| `qdrant` | 6333 | http://localhost:6333/dashboard |
+| `embed-server` | 8765 | http://localhost:8765/health |
+| `index-server` | 8766 | http://localhost:8766/health |
+
+Then run the pipeline:
+
+```bash
+./pipeline-docker.sh
 ```
 
 ---
 
-## Component Documentation
+### Launch the Pipeline on LUMI
 
-- **[Stage 1 — Training](1-train/README.md):** FLEURS dataset fine-tuning, SLURM GPU job arrays, hyperparameter configs, evaluation metrics (WER).
-- **[Stage 2 — Inference & Translation](2-inference/README.md):** Chunked long-form audio transcription, translation mode, interactive GPU/CPU execution.
-- **[Stage 3 — Metadata Extraction](3-analyze/README.md):** Ollama daemon setup on AMD/ROCm GPU, prompt formatting, structured JSON extraction.
-- **[Stage 4 — Cloud Sync](4-file-sync/README.md):** Google Drive OAuth2 setup, rclone configuration, automated 5-minute sync loop, and cloud provider swapping (GCS/S3).
+**Prerequisites:** Singularity SIFs in scratch (`whisper-hpc.sif`, `whisper-sync.sif`, `ollama.sif`, `embeddings-api.sif`, `qdrant.sif`), rclone config at `~/.config/rclone/rclone.conf`, and Llama weights pulled (see `3-analyze/hpc/3-ollama-pull-llama3.sh`).
 
----
+```bash
+cd /scratch/project_465003359/mcgowank/hpc-demo-1
+
+# Start (or restart) all services — cancels any running instances, resubmits all, resubmits itself every 12 h
+sbatch restart-services-sbatch.sh                    # A-restart
+```
+
+`restart-services-sbatch.sh` submits B-ollama → C-sync → D-embed → E-qdrant → F-index → Z-poll in the correct dependency order, then reschedules itself every 12 hours to keep services fresh.
+
+Wait for B-ollama, D-embed, E-qdrant, and F-index to reach `R` (running) and write their endpoint files to `$SCRATCH` before processing begins.
+
+```
+             JOBID PARTITION     NAME     USER ST       TIME  NODES
+          22100084   small-g B-ollama mcgowank  R      12:31      1
+          22100150     small   C-sync mcgowank  R       8:17      1
+          22100201   small-g   D-embed mcgowank  R       6:04      1
+          22100210     small E-qdrant mcgowank  R       5:58      1
+          22100212     small  F-index mcgowank  R       5:51      1
+          22100106     small   Z-poll mcgowank PD       0:00      1
+```
+
+### Manual Batch Submission
+
+```bash
+# Process all pending files
+./pipeline-hpc-submit.sh
+
+# Restrict to one language
+./pipeline-hpc-submit.sh --lang en
+
+# Chain with a dependency
+JID=$(sbatch --parsable 3-analyze/hpc/2-ollama-serve-sbatch.sh)
+./pipeline-hpc-submit.sh --dependency after:$JID
+```
+
+### Graph and Playlist (on demand)
+
+After files are indexed, run the graph job to produce `sync/output/graph.json`, `graph.html`, and playlist JSON:
+
+```bash
+sbatch 9-graph/hpc/graph-sbatch.sh
+sbatch 9-graph/hpc/graph-sbatch.sh --user engineer@org.com --top-n 10
+```
+
+## Automated HPC Pipeline (LUMI)
+
+Eight self-resubmitting SLURM jobs run the pipeline unattended. Each is a persistent service or polling loop that resubmits itself on exit.
+
+| Job | Script | Role |
+|---|---|---|
+| `A-restart` | `restart-services-sbatch.sh` | Cancels and resubmits all services every 12 h |
+| `B-ollama` | `3-analyze/hpc/2-ollama-serve-sbatch.sh` | Persistent Ollama GPU daemon (Llama 3) |
+| `C-sync` | `4-file-sync/hpc/sync-sbatch.sh` | rclone loop — Drive ↔ LUMI every 5 min |
+| `D-embed` | `6-embed/hpc/1-embed-serve-sbatch.sh` | Embedding server (multilingual-e5-large) |
+| `E-qdrant` | `7-index/hpc/1-qdrant-serve-sbatch.sh` | Qdrant vector DB service |
+| `F-index` | `7-index/hpc/2-index-serve-sbatch.sh` | Index server — writes to Qdrant |
+| `G-graph` | `9-graph/hpc/graph-sbatch.sh` | Graph + playlist generation (on demand) |
+| `Z-poll` | `pipeline-hpc-poll.sh` | Pipeline poller — launches array jobs every 10 min |
+| *(array)* | `pipeline-hpc-sbatch.sh` | One SLURM task per audio file (GPU) |
+
+
+
+> **Known issue:** There is a race condition between Z-poll and running pipeline tasks — duplicate jobs can be submitted if a file has not finished processing before the next poll cycle. This is relatively harmless (the `.done` file guards against double-indexing) but could waste GPU resources if a job stalls.
+
+### Monitoring & Management
+
+```bash
+# Active jobs
+squeue --me
+
+# Logs
+tail -f logs/sync-slurm-<jobid>.out       # C-sync
+tail -f logs/poll-slurm-<jobid>.out       # Z-poll
+tail -f logs/<jobid>_<taskid>.out         # pipeline array tasks
+tail -f logs/embed-slurm-<jobid>.out      # D-embed
+tail -f logs/index-slurm-<jobid>.out      # F-index
+tail -f logs/graph-slurm-<jobid>.out      # G-graph
+
+# Manifests
+cat logs/sync-manifest.txt                # files synced from Drive
+cat logs/pipeline-manifest-*.txt          # files submitted for processing
+
+# Cancel everything
+scancel --me
+```
+
+## Repository Structure
+
+| Directory / File | Description |
+|---|---|
+| [`1-train/`](1-train/README.md) | Whisper fine-tuning on FLEURS — SLURM GPU array, 1 job per language |
+| [`2-inference/`](2-inference/README.md) | Chunked long-form audio transcription and ES→EN translation |
+| [`3-analyze/`](3-analyze/README.md) | Structured metadata extraction via Llama 3 / Ollama |
+| [`4-file-sync/`](4-file-sync/README.md) | Google Drive ↔ LUMI bi-directional rclone sync (5-min polling loop) |
+| [`5-sentiment/`](5-sentiment/README.md) | Per-video sentiment label and score from transcript chunks |
+| [`6-embed/`](6-embed/README.md) | Embedding server — `POST /embed` returns 1024-dim vectors (port 8765) |
+| [`7-index/`](7-index/README.md) | Index server — `POST /index` and `POST /metadata` write to Qdrant (port 8766) |
+| [`8-search/`](8-search/README.md) | Semantic nearest-neighbour search over indexed transcript chunks |
+| [`9-graph/`](9-graph/README.md) | Knowledge graph builder and personalised playlist generator |
+| [`pipeline.py`](pipeline.py) | End-to-end orchestrator: infer → analyze → sentiment → embed → index |
+| [`pipeline.yaml`](pipeline.yaml) | Central configuration (model, server URLs, feature flags) |
+| `pipeline-local.sh` | Run full pipeline locally with native Python and Ollama |
+| `pipeline-docker.sh` | Run full pipeline inside Docker Compose |
+| `pipeline-hpc-submit.sh` | Scan manifest and submit SLURM array jobs |
+| `pipeline-hpc-sbatch.sh` | SLURM GPU task wrapper — runs `pipeline.py` inside Singularity |
+| `pipeline-hpc-poll.sh` | Self-resubmitting scheduler — polls for new files every 10 minutes |
+| `profiles/<user>.json` | Per-user profile for playlist personalisation |
+| `roles.yaml` | Role → tag mapping used by `9-graph/playlist.py` |
 
 ## References
 
-- [HuggingFace: Fine-Tune Whisper with 🤗 Transformers](https://huggingface.co/blog/fine-tune-whisper)
+- [HuggingFace: Fine-Tune Whisper](https://huggingface.co/blog/fine-tune-whisper)
 - [Google FLEURS Dataset](https://huggingface.co/datasets/google/fleurs)
+- [intfloat/multilingual-e5-large](https://huggingface.co/intfloat/multilingual-e5-large)
+- [cardiffnlp/twitter-roberta-base-sentiment-latest](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest)
 - [Ollama Documentation](https://github.com/ollama/ollama)
+- [Qdrant Documentation](https://qdrant.tech/documentation/)
 - [rclone Documentation](https://rclone.org/drive/)
-
-
