@@ -1,0 +1,1 @@
+Multi-tenancy architecture for pilot: noted as a development requirement before Task 3 pilot commencement. Currently the Qdrant vector database does not enforce tenant isolation - all videos are searchable across a single namespace. Tenant isolation will be implemented before any pilot partner data is processed, ensuring data separation between organisations.
