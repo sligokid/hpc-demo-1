@@ -1,25 +1,23 @@
 {
-  "title": "Try a Triathlon for Women",
-  "description": "Join the Sligo Triathlon Club's Try a Triathlon initiative for women aged 35 and older. No experience necessary, just a willingness to show up and learn. The 6-week training program starts next Sunday, and the actual triathlon event is on September 27th.",
+  "title": "Sligo Triathlon: Women's Try-A-Tri Initiative",
+  "descriptions": "Join the Sligo Triathlon club for their Women's Try-A-Tri initiative, designed for women 35 years and older who want to take on the challenge of a triathlon. With a 6-week training program, you'll learn to swim, cycle, and run, and culminate in a full triathlon event on September 27th.",
   "tags": [
     "triathlon",
-    "women",
-    "fitness",
-    "health",
-    "wellness",
-    "training",
-    "initiative",
-    "SligoTriathlonClub"
+    "women's triathlon",
+    "try-a-tri",
+    "sligo triathlon club"
   ],
   "goals": [
-    "Learn the basics of triathlon training",
-    "Build confidence and skills in swimming, cycling, and running",
-    "Prepare for a triathlon event on September 27th"
+    "Learn to swim, cycle, and run",
+    "Complete a triathlon",
+    "Improve physical and mental well-being",
+    "Meet new people and build confidence"
   ],
   "skills": [
     "Swimming",
     "Cycling",
     "Running",
-    "Triathlon training and preparation"
+    "Triathlon training",
+    "Goal setting and achievement"
   ]
 }
