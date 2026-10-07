@@ -1,1 +1,0 @@
-lumi doesnt like large amounts of small log files, use a single file for each app per day.
