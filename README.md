@@ -275,4 +275,8 @@ make test
 - [Ollama Documentation](https://github.com/ollama/ollama)
 - [rclone Documentation](https://rclone.org/drive/)
 
+---
+## Acknowledgements
 
+- This work was supported by the FFplus project, funded by the European High-Performance Computing Joint Undertaking (EuroHPC JU) under grant agreement No 101163317.
+- We acknowledge the EuroHPC Joint Undertaking for awarding us access to LUMI, hosted at CSC (IT Center for Science) Kajaani, Finland, under project ID project_465003359.
