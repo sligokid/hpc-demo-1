@@ -4,3 +4,4 @@ venv*
 *__pycache__
 *.DS_Store
 sync*
+10-agent/local/.env
