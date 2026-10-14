@@ -1,30 +1,33 @@
 # 10-agent — Knowledge-Base Agent
 
-LangGraph agent with a CLI chat loop for the indexed video knowledge base. `tools.py` wraps Qdrant queries behind three stateless functions; `prompts.py` centralises the system prompt and citation formatting; `agent.py` implements the LangGraph graph and CLI entry point.
+LangGraph agent with a conversational CLI for the indexed video knowledge base. Supports factual Q&A with cited sources, full transcript retrieval, AI-generated summaries, and playlist generation — all with a human approval gate before anything is written to Qdrant.
 
 **Depends on:** Qdrant (port 6333), Ollama (port 11434), indexed `video_chunks` and `video_metadata` collections.
 
 ---
 
-## Models Used
+## Models (used by this agent)
 
 | Model | Source | Role |
-|-------|--------|------|
-| `intfloat/multilingual-e5-large` | [HuggingFace](https://huggingface.co/intfloat/multilingual-e5-large) | Encodes search queries into 1024-dim vectors for nearest-neighbour lookup |
-| `qwen2.5:3b` (via Ollama) | Ollama | LLM reasoning and tool-call decisions |
+|---|---|---|
+| `intfloat/multilingual-e5-large` | HuggingFace | Encodes queries to 1024-dim vectors. Must match the model used by `6-embed` at index time. |
+| `qwen2.5:3b` (via Ollama) | Ollama | LLM reasoning, tool-call decisions, summarisation, playlist curation |
 
-Must match the model used by `6-embed` at index time — using a different embed model will produce incompatible vectors and poor results. Query text is prefixed with `query:` before encoding (as required by E5). The `passage:` prefix is used at index time; `query:` is used here — omitting this asymmetry degrades retrieval quality.
+Query text is prefixed with `query:` before encoding (E5 asymmetric retrieval). The `passage:` prefix is used at index time — omitting this asymmetry degrades retrieval quality.
 
----
 
 ## Quick start
 
 ```bash
-# from the project root with venv active
+# first time only — pull the model (~2 GB)
+ollama pull qwen2.5:3b
+
+cp 10-agent/local/.env.example 10-agent/local/.env
+# edit QDRANT_HOST, OLLAMA_HOST etc. as needed
 bash 10-agent/local/run.sh
 ```
 
-Type a question at the `>` prompt. Type `exit` to quit.
+Type a question at the `>` prompt. The agent remembers the full conversation for the session. Type `exit` to quit.
 
 ---
 
@@ -73,21 +76,50 @@ What are the main topics covered in the AI videos and who are the speakers?
 
 ## How it Works
 
-The LangGraph graph has three nodes:
+### Graph topology
 
-1. **`think`** — sends the conversation history and tool schema to Qwen (via Ollama `/api/chat`). If Qwen returns a tool call, the graph routes to `run_tool`. If it returns a plain answer, the graph routes to `respond`.
-2. **`run_tool`** — dispatches to one of the three tool functions, appends the result as a tool message, and loops back to `think`.
-3. **`respond`** — extracts the final answer and accumulated sources from state, then ends.
+```
+                 ┌─────────────────┐
+   start ──────▶ │     think       │
+                 └────────┬────────┘
+              tool call?  │  plain answer?
+            ┌─────────────┴──────────────┐
+            ▼                            ▼
+     ┌─────────────┐              ┌─────────────┐
+     │  run_tool   │              │   respond   │──▶ END
+     └──────┬──────┘              └─────────────┘
+ artefact?  │  no artefact?
+┌───────────┴──────────┐
+▼                      └──▶ think (loop)
+┌──────────────┐
+│ ask_approval │
+│  interrupt() │
+└──────┬───────┘
+  y/n  └──▶ END
+```
 
-The graph cycles `think → run_tool → think` until Qwen has enough information to answer, then exits via `respond`.
+**`think`** — sends the full conversation history and tool schema to Qwen (Ollama `/api/chat`). Routes to `run_tool` if Qwen calls a tool, or to `respond` if it returns a plain answer.
+
+**`run_tool`** — executes the chosen tool and appends the result to the message history. Routes back to `think` (read tools) or to `ask_approval` (if `generate_summary` or `generate_playlist` produced a draft artefact).
+
+**`respond`** — formats the final answer and sources block, then ends.
+
+**`ask_approval`** — uses LangGraph `interrupt()` to pause the graph, display the draft artefact, and prompt `[y/n]`. On `y`: calls `save_artefact` with the OS username and a timestamp. On `n`: discards silently. `save_artefact` is not in the tool schema — the LLM cannot call it directly.
+
+### Conversation memory
+
+A single `thread_id` is generated at session start and passed to every `graph.invoke()` call. The `MemorySaver` checkpointer replays the full message history into Qwen on each turn, so follow-up questions and clarifications work naturally within a session. History does not persist between sessions (process restart = blank slate).
 
 ### Tool functions
 
-1. **`search_knowledge_base`** — prefixes the query with `query:`, encodes it with `multilingual-e5-large`, and runs a `query_points` call against the `video_chunks` collection. An optional `lang` argument restricts results to a single language code. Returns `{video_id, file, text, timestamp_start, timestamp_end, score}`.
-2. **`get_video_metadata`** — scrolls the `video_metadata` collection for a given `video_id` and returns the full metadata payload (title, description, lang, creator, etc.).
-3. **`get_full_transcript`** — paginates all chunks for a `video_id` from `video_chunks`, sorted by `timestamp_start`. Returns `{text, timestamp_start, timestamp_end}`.
-
-All three accept `qdrant_client` and `embed_model` as injected keyword arguments — no module-level globals, keeping them mockable in tests.
+| Tool | Collection | Description |
+|---|---|---|
+| `search_knowledge_base` | `video_chunks` | Embeds query with E5, returns top-k `{video_id, text, timestamp, score}` |
+| `get_video_metadata` | `video_metadata` | Returns full metadata payload for a `video_id` |
+| `get_full_transcript` | `video_chunks` | Scrolls all chunks for a video, sorted by timestamp |
+| `generate_summary` | — | Gets full transcript, summarises via Qwen. Draft only — does not save. |
+| `generate_playlist` | — | Multi-query search + Qwen ordering. Draft only — does not save. |
+| `save_artefact` | `video_artefacts` | Persists approved artefact with `approved_by` + `approved_at`. Not callable by LLM. |
 
 ---
 
@@ -95,44 +127,18 @@ All three accept `qdrant_client` and `embed_model` as injected keyword arguments
 
 | File | Description |
 |---|---|
-| `tools.py` | Three stateless read functions wrapping Qdrant |
-| `prompts.py` | `SYSTEM_PROMPT`, `CITATION_TEMPLATE`, `LANG_INSTRUCTIONS`, `format_sources()` |
-| `agent.py` | LangGraph graph (`think`/`run_tool`/`respond`), `_serialize_messages`, CLI `main()` |
+| `tools.py` | Six tool functions (3 read, 2 generate, 1 write) |
+| `prompts.py` | `SYSTEM_PROMPT`, `SUMMARISE_PROMPT`, `PLAYLIST_PROMPT`, `CITATION_TEMPLATE`, `format_sources()` |
+| `agent.py` | LangGraph graph, all nodes and routing, `_serialize_messages`, CLI `main()` |
 | `local/run.sh` | Sources `local/.env`, exports env vars, runs `agent.py` |
 | `local/.env.example` | All environment variables with defaults |
-| `tests/test_tools.py` | 11 unit tests for the three tool functions (Qdrant mocked) |
-| `tests/test_graph.py` | 8 graph path tests — full think→run_tool→respond cycle (Qdrant + Ollama mocked) |
-
----
-
-## Running locally
-
-**Prerequisites:** venv active, `pip install -r requirements.txt` done, Qdrant running with indexed data, Ollama running with `qwen2.5:3b` pulled.
-
-```bash
-# first time only — pull the model (~2 GB)
-ollama pull qwen2.5:3b
-
-cp 10-agent/local/.env.example 10-agent/local/.env
-# edit QDRANT_HOST, OLLAMA_HOST etc. as needed
-bash 10-agent/local/run.sh
-```
-
----
-
-## Tests
-
-```bash
-pytest 10-agent/tests/ -v
-```
-
-Qdrant client, embed model, and Ollama are fully mocked — no live services, model weights, or GPU required.
+| `tests/test_tools.py` | 11 unit tests — read tool functions (Qdrant mocked) |
+| `tests/test_graph.py` | 8 graph path tests — read path (Qdrant + Ollama mocked) |
+| `tests/test_artefacts.py` | 12 tests — generate/save tools and approval gate graph paths |
 
 ---
 
 ## Configuration
-
-All settings are read from environment variables (populated by `local/run.sh` from `local/.env`):
 
 | Variable | Default | Description |
 |---|---|---|
@@ -144,14 +150,24 @@ All settings are read from environment variables (populated by `local/run.sh` fr
 
 ---
 
+## Tests
+
+```bash
+pytest 10-agent/tests/ -v
+```
+
+31 tests. Qdrant, embed model, and Ollama are fully mocked — no live services or GPU required.
+
+---
+
 ## Limitations
 
-**Startup exits fast if services are unreachable.** The agent checks Qdrant and Ollama on startup and exits with a non-zero code and a clear error message if either is down.
+**Conversation history is in-memory only.** History survives for the duration of the process. Restarting the agent starts a fresh session. See `issues/todo/019-agent-persistent-conversation-history.md` for the persistent history path.
 
-**Model loads from disk on every cold start.** `multilingual-e5-large` is ~2 GB. For repeated use keep the process running rather than restarting.
+**Startup exits fast if services are unreachable.** Checks Qdrant and Ollama on startup; exits with a non-zero code and a clear error if either is down.
 
-**Language filter is exact-match.** The `lang` value must match exactly what was stored at index time (e.g. `"en"`, `"es"`). There is no fallback to cross-lingual search.
+**Model loads from disk on every cold start.** `multilingual-e5-large` is ~2 GB. Keep the process running for repeated use.
 
-**`get_full_transcript` paginates in batches of 100.** For very long videos this issues multiple scroll requests. Results are always fully reassembled and sorted before returning.
+**Language filter is exact-match.** The `lang` value must match exactly what was stored at index time (`"en"`, `"es"`, etc.). No cross-lingual fallback.
 
-**`top_k` is a hard limit, not a score threshold.** Low-relevance results are returned alongside high-confidence hits. Apply a score cutoff in the calling code if needed.
+**`top_k` is a hard limit, not a score threshold.** Low-relevance results are returned alongside high-confidence hits.
