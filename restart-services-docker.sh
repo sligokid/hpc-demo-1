@@ -72,8 +72,9 @@ _wait_healthy() {
 _wait_healthy ollama       180   # first-run model pull can be slow
 echo ""
 echo "============================================"
-echo "--- Ensuring llama3 is pulled... ---"
+echo "--- Ensuring models are pulled... ---"
 docker compose exec ollama ollama pull llama3:latest
+docker compose exec ollama ollama pull qwen2.5:3b
 
 _wait_healthy qdrant        60
 _wait_healthy embed-server 180   # model load takes ~90s on CPU

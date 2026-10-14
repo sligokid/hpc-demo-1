@@ -60,11 +60,11 @@ Create a summary of the InPost video
 Create a summary of the bike fitting video
 ```
 
-**Playlist Generation ** (`generate_playlist`):
+**Playlist Generation** (`generate_playlist`):
 ```
 Create a Into to Slick Playlist
 Create a playlist of videos for a beginner triathlete
-
+```
 
 
 **Multi-hop** (agent calls multiple tools autonomously):
@@ -72,6 +72,84 @@ Create a playlist of videos for a beginner triathlete
 What are the main topics covered in the AI videos and who are the speakers?
 ```
 
+#Docker example
+```
+(venv) sligokid@Kierans-Laptop 10-agent % docker compose run --rm agent
+[+] Creating 2/2
+ ✔ Container hpc-demo-1-qdrant-1  Running                                                                                                   0.0s
+ ✔ Container hpc-demo-1-ollama-1  Running                                                                                                   0.0s
+=== HPC Video Knowledge-Base Agent ===
+  Qdrant : qdrant:6333
+  Ollama : ollama:11434  model=qwen2.5:3b
+  Embed  : intfloat/multilingual-e5-large
+
+Checking services... OK
+Loading embed model... Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights: 100%|██████████████████████████████████████████████████████████████████████████████████████| 391/391 [00:00<00:00, 1837.06it/s]
+OK
+
+Type your question or 'exit' to quit.
+
+> Generate a playlist for a new hire on Slick
+
+====================================================
+  Draft Playlist
+====================================================
+[
+  {
+    "video_id": "en/Untitled video (1)",
+    "title": "Introduction to Slick Plus: A Knowledge Sharing Platform",
+    "timestamp_start": 0.0,
+    "timestamp_end": 8.32,
+    "reason": "Foundationally introduces the concept of Slick Plus to new hires"
+  },
+  {
+    "video_id": "en/Slick Plus Intro_1080p",
+    "title": "Future of Workplace Learning with SlickPlus",
+    "timestamp_start": 0.0,
+    "timestamp_end": 5.84,
+    "reason": "Highlights the vision and capabilities of Slick Plus"
+  },
+  {
+    "video_id": "en/Slick ICE Group Demo",
+    "title": "SlickPlus: A Secure Knowledge Sharing Platform",
+    "timestamp_start": 0.0,
+    "timestamp_end": 10.72,
+    "reason": "Demonstrates the platform's application in the context of the ICE Group"
+  },
+  {
+    "video_id": "en/Workplace Learning Summit - Keynote Full Talk with Audience",
+    "title": "Industry Spotlight: Mary Carney, Regional Director of Impost Ireland",
+    "timestamp_start": 132.56,
+    "timestamp_end": 137.48,
+    "reason": "Provides insight into how Slick Plus can facilitate knowledge transfer and training"
+  },
+  {
+    "video_id": "en/Short demo for OPCW",
+    "title": "Slick Plus: Secure Video Platform for Knowledge Management",
+    "timestamp_start": 18.08,
+    "timestamp_end": 26.96,
+    "reason": "Demonstrates specific functionalities of the platform in a practical setting"
+  },
+  {
+    "video_id": "en/Slickplus Leadership Update",
+    "title": "Slickplus Leadership Update",
+    "timestamp_start": 0.0,
+    "timestamp_end": 27.28,
+    "reason": "Gives an overview of new features and developments within the company"
+  },
+  {
+    "video_id": "en/Intro to Slick+",
+    "title": "Slickplus: Organizing Knowledge for Effortless Learning",
+    "timestamp_start": 73.24,
+    "timestamp_end": 80.56,
+    "reason": "Concludes with practical applications of Slick Plus in a learning context"
+  }
+]
+====================================================
+  Source videos: en/Untitled video (1), en/Slick Plus Intro_1080p, en/Slick ICE Group Demo, en/Workplace Learning Summit - Keynote Full Talk with Audience, en/Short demo for OPCW, en/Slickplus Leadership Update, en/Intro to Slick+
+====================================================
+```
 ---
 
 ## How it Works

@@ -74,6 +74,26 @@ services:
       retries: 5
       start_period: 30s
 
+  agent:
+    build:
+      context: .
+      dockerfile: 10-agent/docker/Dockerfile
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      - QDRANT_HOST=qdrant:6333
+      - OLLAMA_HOST=ollama:11434
+      - LLM_MODEL=qwen2.5:3b
+      - EMBED_MODEL=intfloat/multilingual-e5-large
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      - .hf_cache:/root/.cache/huggingface
+    stdin_open: true
+    tty: true
+
 volumes:
   ollama_models:
   qdrant_storage:
