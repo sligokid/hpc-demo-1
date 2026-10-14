@@ -16,12 +16,24 @@ set -euo pipefail
 SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 SIF=${SIF:-$SCRATCH/agent.sif}
 HF_CACHE=${HF_CACHE:-$SCRATCH/hf_cache}
-QDRANT_HOST="${QDRANT_HOST:-localhost:6333}"
-OLLAMA_HOST="${OLLAMA_HOST:-localhost:11434}"
+OLLAMA_ENDPOINT_FILE=$SCRATCH/ollama.endpoint
+QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
 AGENT_MODEL="${AGENT_MODEL:-qwen2.5:3b}"
 EMBED_MODEL="${EMBED_MODEL:-intfloat/multilingual-e5-large}"
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+if [ ! -f "$OLLAMA_ENDPOINT_FILE" ]; then
+    echo "Error: Ollama endpoint file not found at $OLLAMA_ENDPOINT_FILE" >&2
+    exit 1
+fi
+if [ ! -f "$QDRANT_ENDPOINT_FILE" ]; then
+    echo "Error: Qdrant endpoint file not found at $QDRANT_ENDPOINT_FILE" >&2
+    exit 1
+fi
+
+OLLAMA_HOST=$(cat "$OLLAMA_ENDPOINT_FILE")
+QDRANT_HOST=$(cat "$QDRANT_ENDPOINT_FILE")
 
 mkdir -p "$HF_CACHE"
 
