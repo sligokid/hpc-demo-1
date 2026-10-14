@@ -50,6 +50,20 @@ Give me the full transcript of the Slick+ intro video
 Show me the complete transcript of the InPost video
 ```
 
+**Summary Generation** (`generate_summary`):
+```
+Create a summary of the Slick+ intro video
+Create a summary of the InPost video
+Create a summary of the bike fitting video
+```
+
+**Playlist Generation ** (`generate_playlist`):
+```
+Create a Into to Slick Playlist
+Create a playlist of videos for a beginner triathlete
+
+
+
 **Multi-hop** (agent calls multiple tools autonomously):
 ```
 What are the main topics covered in the AI videos and who are the speakers?

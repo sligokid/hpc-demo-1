@@ -624,6 +624,12 @@ def main() -> None:
     checkpointer = MemorySaver()
     graph = build_graph(qdrant_client, embed_model, ollama_host, model, checkpointer)
 
+    # One thread_id per CLI session — the checkpointer accumulates message
+    # history so the agent remembers what it said in earlier turns.
+    session_thread_id = str(uuid.uuid4())
+    config = {"configurable": {"thread_id": session_thread_id}}
+    first_turn = True
+
     print("Type your question or 'exit' to quit.")
     print()
 
@@ -639,22 +645,26 @@ def main() -> None:
         if user_input.lower() == "exit":
             sys.exit(0)
 
-        # Each question gets its own thread so history does not bleed between turns
-        thread_id = str(uuid.uuid4())
-        config = {"configurable": {"thread_id": thread_id}}
-
-        initial_state: AgentState = {
-            "messages": [
+        # First turn seeds the system prompt; subsequent turns only add the new
+        # user message — the checkpointer carries the full history forward.
+        if first_turn:
+            messages = [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_input},
-            ],
+            ]
+            first_turn = False
+        else:
+            messages = [{"role": "user", "content": user_input}]
+
+        state: AgentState = {
+            "messages": messages,
             "tool_results": [],
             "pending_artefact": None,
             "answer": "",
             "sources": [],
         }
 
-        result = graph.invoke(initial_state, config=config)
+        result = graph.invoke(state, config=config)
 
         # Handle approval gate — loop in case of nested interrupts
         while result.get("__interrupt__"):
