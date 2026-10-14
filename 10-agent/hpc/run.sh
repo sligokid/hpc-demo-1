@@ -13,8 +13,9 @@
 
 set -euo pipefail
 
-SIF=/scratch/project_465003359/mcgowank/agent.sif
-HF_HOME="${HF_HOME:-/root/.cache/huggingface}"
+SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
+SIF=${SIF:-$SCRATCH/agent.sif}
+HF_CACHE=${HF_CACHE:-$SCRATCH/hf_cache}
 QDRANT_HOST="${QDRANT_HOST:-localhost:6333}"
 OLLAMA_HOST="${OLLAMA_HOST:-localhost:11434}"
 AGENT_MODEL="${AGENT_MODEL:-qwen2.5:3b}"
@@ -22,21 +23,24 @@ EMBED_MODEL="${EMBED_MODEL:-intfloat/multilingual-e5-large}"
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+mkdir -p "$HF_CACHE"
+
 echo "PROJECT_ROOT : $PROJECT_ROOT"
 echo "SIF          : $SIF"
+echo "HF_CACHE     : $HF_CACHE"
 echo "QDRANT_HOST  : $QDRANT_HOST"
 echo "OLLAMA_HOST  : $OLLAMA_HOST"
-echo "AGENT_MODEL    : $AGENT_MODEL"
+echo "AGENT_MODEL  : $AGENT_MODEL"
 echo ""
 
 singularity exec \
     --bind "$PROJECT_ROOT:/workspace" \
-    --bind "$PROJECT_ROOT/.hf_cache:$HF_HOME" \
+    --bind "$HF_CACHE:/hf_cache" \
     --env QDRANT_HOST="$QDRANT_HOST" \
     --env OLLAMA_HOST="$OLLAMA_HOST" \
     --env AGENT_MODEL="$AGENT_MODEL" \
     --env EMBED_MODEL="$EMBED_MODEL" \
-    --env HF_HOME="$HF_HOME" \
+    --env HF_HOME=/hf_cache \
     "$SIF" bash -c "
 export LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64:/usr/local/lib
 python /workspace/10-agent/agent.py
