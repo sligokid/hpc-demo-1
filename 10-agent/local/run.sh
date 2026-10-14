@@ -16,7 +16,7 @@ fi
 
 export QDRANT_HOST="${QDRANT_HOST:-localhost:6333}"
 export OLLAMA_HOST="${OLLAMA_HOST:-localhost:11434}"
-export LLM_MODEL="${LLM_MODEL:-llama3}"
+export AGENT_MODEL="${AGENT_MODEL:-qwen2.5:3b}"
 export EMBED_MODEL="${EMBED_MODEL:-intfloat/multilingual-e5-large}"
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 

@@ -222,7 +222,7 @@ A single `thread_id` is generated at session start and passed to every `graph.in
 |---|---|---|
 | `QDRANT_HOST` | `localhost:6333` | Qdrant host:port |
 | `OLLAMA_HOST` | `localhost:11434` | Ollama host:port |
-| `LLM_MODEL` | `qwen2.5:3b` | Ollama model name |
+| `AGENT_MODEL` | `qwen2.5:3b` | Ollama model name |
 | `EMBED_MODEL` | `intfloat/multilingual-e5-large` | HuggingFace embed model |
 | `HF_HOME` | `~/.cache/huggingface` | HuggingFace model cache directory |
 

@@ -45,7 +45,8 @@ docker run -it \
   --network host \
   -e QDRANT_HOST=localhost:6333 \
   -e OLLAMA_HOST=localhost:11434 \
-  -e LLM_MODEL=qwen2.5:3b \
+  -e AGENT_MODEL=qwen2.5:3b \
+  -e GENERATE_MODEL=llama3:latest \
   -e EMBED_MODEL=intfloat/multilingual-e5-large \
   -v "$(pwd)/.hf_cache:/root/.cache/huggingface" \
   slickplus/agent:latest
@@ -61,7 +62,8 @@ docker run -it \
 |---|---|---|
 | `QDRANT_HOST` | `localhost:6333` | Qdrant host:port |
 | `OLLAMA_HOST` | `localhost:11434` | Ollama host:port |
-| `LLM_MODEL` | `qwen2.5:3b` | Ollama model name |
+| `AGENT_MODEL` | `qwen2.5:3b` | Ollama model for tool-calling (think node) |
+| `GENERATE_MODEL` | same as `AGENT_MODEL` | Ollama model for generation (summarise / playlist) |
 | `EMBED_MODEL` | `intfloat/multilingual-e5-large` | HuggingFace embed model |
 | `HF_HOME` | `/root/.cache/huggingface` | HuggingFace model cache — bind-mount `.hf_cache` here to avoid re-downloading |
 

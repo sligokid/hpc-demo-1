@@ -4,7 +4,7 @@
 # waiting for each health check to pass before continuing.
 #
 # Services restarted (in dependency order):
-#   ollama       — Llama 3 inference (port 11434)
+#   ollama       — LLM inference: qwen2.5:3b (tool-calling), llama3 (generation) (port 11434)
 #   qdrant       — vector database   (port 6333)
 #   embed-server — encoding service  (port 8765)
 #   index-server — indexing service  (port 8766)

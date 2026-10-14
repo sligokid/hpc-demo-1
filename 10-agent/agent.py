@@ -275,7 +275,7 @@ def make_run_tool_node(
     qdrant_client: QdrantClient,
     embed_model: SentenceTransformer,
     ollama_host: str,
-    model: str,
+    generate_model: str,
 ):
     def run_tool(state: AgentState) -> dict:
         last = state["messages"][-1]
@@ -313,7 +313,7 @@ def make_run_tool_node(
                     fn_args["video_id"],
                     qdrant_client=qdrant_client,
                     ollama_host=ollama_host,
-                    model=model,
+                    model=generate_model,
                 )
                 pending = {
                     "type": "summary",
@@ -327,7 +327,7 @@ def make_run_tool_node(
                     qdrant_client=qdrant_client,
                     embed_model=embed_model,
                     ollama_host=ollama_host,
-                    model=model,
+                    model=generate_model,
                 )
                 pending = {
                     "type": "playlist",
@@ -510,10 +510,11 @@ def build_graph(
     embed_model: SentenceTransformer,
     ollama_host: str,
     model: str,
+    generate_model: str,
     checkpointer=None,
 ):
     think = make_think_node(ollama_host, model)
-    run_tool = make_run_tool_node(qdrant_client, embed_model, ollama_host, model)
+    run_tool = make_run_tool_node(qdrant_client, embed_model, ollama_host, generate_model)
     respond = make_respond_node()
     ask_approval = make_ask_approval_node(qdrant_client)
 
@@ -602,13 +603,16 @@ def _print_answer(answer: str, sources: list) -> None:
 def main() -> None:
     qdrant_host = os.environ.get("QDRANT_HOST", "localhost:6333")
     ollama_host = os.environ.get("OLLAMA_HOST", "localhost:11434")
-    model = os.environ.get("LLM_MODEL", "qwen2.5:7b")
+    model = os.environ.get("AGENT_MODEL", "qwen2.5:7b")
+    generate_model = os.environ.get("GENERATE_MODEL", model)
     embed_model_name = os.environ.get("EMBED_MODEL", "intfloat/multilingual-e5-large")
 
     print("=== HPC Video Knowledge-Base Agent ===")
-    print(f"  Qdrant : {qdrant_host}")
-    print(f"  Ollama : {ollama_host}  model={model}")
-    print(f"  Embed  : {embed_model_name}")
+    print(f"  Qdrant   : {qdrant_host}")
+    print(f"  Ollama   : {ollama_host}")
+    print(f"  LLM      : {model}  (tool-calling)")
+    print(f"  Generate : {generate_model}  (summarise / playlist)")
+    print(f"  Embed    : {embed_model_name}")
     print()
 
     print("Checking services...", end=" ", flush=True)
@@ -622,7 +626,7 @@ def main() -> None:
     print()
 
     checkpointer = MemorySaver()
-    graph = build_graph(qdrant_client, embed_model, ollama_host, model, checkpointer)
+    graph = build_graph(qdrant_client, embed_model, ollama_host, model, generate_model, checkpointer)
 
     # One thread_id per CLI session — the checkpointer accumulates message
     # history so the agent remembers what it said in earlier turns.
