@@ -1,9 +1,13 @@
 """
 LangGraph agent for the video knowledge-base RAG chat.
 
-Graph topology:
+Graph topology (read path):
     think -> run_tool -> think  (cycles until LLM has enough info)
     think -> respond            (when LLM returns a plain-text answer)
+
+Graph topology (write path):
+    think -> run_tool -> ask_approval -> END
+    (run_tool sets pending_artefact; ask_approval interrupts for y/n)
 
 The graph is importable and testable without a live terminal — all external
 dependencies (Qdrant, Ollama, SentenceTransformer) are injected via
@@ -17,14 +21,23 @@ import uuid
 from typing import Annotated, Any, List, Literal, Optional
 
 import requests
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
+from langgraph.types import Command, interrupt
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
 from typing_extensions import TypedDict
 
 from prompts import SYSTEM_PROMPT
-from tools import get_full_transcript, get_video_metadata, search_knowledge_base
+from tools import (
+    generate_playlist,
+    generate_summary,
+    get_full_transcript,
+    get_video_metadata,
+    save_artefact,
+    search_knowledge_base,
+)
 
 # ---------------------------------------------------------------------------
 # Tool schema (Ollama tool-calling format)
@@ -104,6 +117,48 @@ TOOLS_SCHEMA = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_summary",
+            "description": (
+                "Generate a structured summary of a video from its full transcript. "
+                "Use this when the user asks to summarise a specific video. "
+                "The draft will be shown for approval before being saved."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "video_id": {
+                        "type": "string",
+                        "description": "The video_id to summarise.",
+                    }
+                },
+                "required": ["video_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_playlist",
+            "description": (
+                "Generate an ordered playlist of videos for a learning or task goal. "
+                "Use this when the user asks to build a playlist or learning path. "
+                "The draft will be shown for approval before being saved."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "goal": {
+                        "type": "string",
+                        "description": "The learning goal or topic for the playlist.",
+                    }
+                },
+                "required": ["goal"],
+            },
+        },
+    },
 ]
 
 
@@ -114,9 +169,10 @@ TOOLS_SCHEMA = [
 
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
-    tool_results: list  # accumulated search results for the sources block
-    answer: str         # set by the respond node
-    sources: list       # set by the respond node
+    tool_results: list          # accumulated search results for the sources block
+    pending_artefact: Optional[dict]  # set by run_tool when a draft is ready
+    answer: str                 # set by respond or ask_approval
+    sources: list               # set by respond or ask_approval
 
 
 # ---------------------------------------------------------------------------
@@ -215,13 +271,19 @@ def make_think_node(ollama_host: str, model: str):
     return think
 
 
-def make_run_tool_node(qdrant_client: QdrantClient, embed_model: SentenceTransformer):
+def make_run_tool_node(
+    qdrant_client: QdrantClient,
+    embed_model: SentenceTransformer,
+    ollama_host: str,
+    model: str,
+):
     def run_tool(state: AgentState) -> dict:
         last = state["messages"][-1]
         tool_calls = _get_tool_calls(last)
 
         tool_messages = []
         new_results: list = []
+        pending: Optional[dict] = None
 
         for tc in tool_calls:
             fn_name, fn_args, call_id = _parse_tool_call(tc)
@@ -246,6 +308,33 @@ def make_run_tool_node(qdrant_client: QdrantClient, embed_model: SentenceTransfo
                     fn_args["video_id"], qdrant_client=qdrant_client
                 )
                 content = json.dumps(result)
+            elif fn_name == "generate_summary":
+                summary = generate_summary(
+                    fn_args["video_id"],
+                    qdrant_client=qdrant_client,
+                    ollama_host=ollama_host,
+                    model=model,
+                )
+                pending = {
+                    "type": "summary",
+                    "content": summary,
+                    "video_ids": [fn_args["video_id"]],
+                }
+                content = summary
+            elif fn_name == "generate_playlist":
+                playlist = generate_playlist(
+                    fn_args["goal"],
+                    qdrant_client=qdrant_client,
+                    embed_model=embed_model,
+                    ollama_host=ollama_host,
+                    model=model,
+                )
+                pending = {
+                    "type": "playlist",
+                    "content": json.dumps(playlist, indent=2),
+                    "video_ids": [item["video_id"] for item in playlist],
+                }
+                content = json.dumps(playlist)
             else:
                 content = json.dumps({"error": f"Unknown tool: {fn_name}"})
 
@@ -257,6 +346,7 @@ def make_run_tool_node(qdrant_client: QdrantClient, embed_model: SentenceTransfo
         return {
             "messages": tool_messages,
             "tool_results": existing + new_results,
+            "pending_artefact": pending,
         }
 
     return run_tool
@@ -319,8 +409,88 @@ def _parse_tool_call(tc) -> tuple:
 
 
 # ---------------------------------------------------------------------------
+# Approval gate node
+# ---------------------------------------------------------------------------
+
+
+def _get_username() -> str:
+    try:
+        return os.getlogin()
+    except OSError:
+        return os.environ.get("USER", os.environ.get("USERNAME", "unknown"))
+
+
+def _format_artefact_display(artefact: dict) -> str:
+    sep = "=" * 52
+    lines = [
+        "",
+        sep,
+        f"  Draft {artefact['type'].title()}",
+        sep,
+        artefact["content"],
+        sep,
+        f"  Source videos: {', '.join(artefact['video_ids'])}",
+        sep,
+    ]
+    return "\n".join(lines)
+
+
+def make_ask_approval_node(qdrant_client: QdrantClient):
+    """Return the ask_approval node.
+
+    Uses LangGraph interrupt() to pause and surface the draft artefact to the
+    CLI. On resume:
+      - "y" / "yes"  → saves via save_artefact, records approver identity
+      - anything else → discards silently
+
+    save_artefact is NOT in TOOLS_SCHEMA and is only reachable via this node.
+    """
+
+    def ask_approval(state: AgentState) -> dict:
+        artefact = state["pending_artefact"]
+        display = _format_artefact_display(artefact)
+
+        # Pause graph — CLI receives display string in __interrupt__
+        user_decision = interrupt(display)
+
+        sources = list(state.get("tool_results") or [])
+
+        if str(user_decision).lower().strip() in ("y", "yes"):
+            approved_by = _get_username()
+            artefact_id = save_artefact(
+                artefact["type"],
+                artefact["content"],
+                artefact["video_ids"],
+                approved_by,
+                qdrant_client=qdrant_client,
+            )
+            answer = (
+                f"Saved {artefact['type']} to the knowledge base.\n"
+                f"  ID       : {artefact_id}\n"
+                f"  Approved : {approved_by}\n"
+                f"  Videos   : {', '.join(artefact['video_ids'])}"
+            )
+        else:
+            answer = "Artefact discarded."
+
+        return {
+            "pending_artefact": None,
+            "answer": answer,
+            "sources": sources,
+        }
+
+    return ask_approval
+
+
+# ---------------------------------------------------------------------------
 # Routing
 # ---------------------------------------------------------------------------
+
+
+def route_after_run_tool(state: AgentState) -> Literal["ask_approval", "think"]:
+    if state.get("pending_artefact"):
+        return "ask_approval"
+    return "think"
 
 
 def route_after_think(state: AgentState) -> Literal["run_tool", "respond"]:
@@ -340,15 +510,18 @@ def build_graph(
     embed_model: SentenceTransformer,
     ollama_host: str,
     model: str,
+    checkpointer=None,
 ):
     think = make_think_node(ollama_host, model)
-    run_tool = make_run_tool_node(qdrant_client, embed_model)
+    run_tool = make_run_tool_node(qdrant_client, embed_model, ollama_host, model)
     respond = make_respond_node()
+    ask_approval = make_ask_approval_node(qdrant_client)
 
     builder = StateGraph(AgentState)
     builder.add_node("think", think)
     builder.add_node("run_tool", run_tool)
     builder.add_node("respond", respond)
+    builder.add_node("ask_approval", ask_approval)
 
     builder.set_entry_point("think")
     builder.add_conditional_edges(
@@ -356,10 +529,15 @@ def build_graph(
         route_after_think,
         {"run_tool": "run_tool", "respond": "respond"},
     )
-    builder.add_edge("run_tool", "think")
+    builder.add_conditional_edges(
+        "run_tool",
+        route_after_run_tool,
+        {"ask_approval": "ask_approval", "think": "think"},
+    )
+    builder.add_edge("ask_approval", END)
     builder.add_edge("respond", END)
 
-    return builder.compile()
+    return builder.compile(checkpointer=checkpointer)
 
 
 # ---------------------------------------------------------------------------
@@ -443,7 +621,8 @@ def main() -> None:
     print("OK")
     print()
 
-    graph = build_graph(qdrant_client, embed_model, ollama_host, model)
+    checkpointer = MemorySaver()
+    graph = build_graph(qdrant_client, embed_model, ollama_host, model, checkpointer)
 
     print("Type your question or 'exit' to quit.")
     print()
@@ -460,17 +639,34 @@ def main() -> None:
         if user_input.lower() == "exit":
             sys.exit(0)
 
+        # Each question gets its own thread so history does not bleed between turns
+        thread_id = str(uuid.uuid4())
+        config = {"configurable": {"thread_id": thread_id}}
+
         initial_state: AgentState = {
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_input},
             ],
             "tool_results": [],
+            "pending_artefact": None,
             "answer": "",
             "sources": [],
         }
 
-        result = graph.invoke(initial_state)
+        result = graph.invoke(initial_state, config=config)
+
+        # Handle approval gate — loop in case of nested interrupts
+        while result.get("__interrupt__"):
+            interrupts = result["__interrupt__"]
+            print(interrupts[0].value)
+            print()
+            try:
+                decision = input("Save this to the knowledge base? [y/n] ").strip()
+            except (EOFError, KeyboardInterrupt):
+                decision = "n"
+            result = graph.invoke(Command(resume=decision), config=config)
+
         _print_answer(result["answer"], result["sources"])
 
 

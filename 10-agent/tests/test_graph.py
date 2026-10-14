@@ -18,6 +18,7 @@ from agent import (
     make_run_tool_node,
     make_think_node,
     route_after_think,
+    route_after_run_tool,
     _get_tool_calls,
 )
 
@@ -157,7 +158,7 @@ def test_run_tool_calls_search_knowledge_base():
     qdrant = _mock_qdrant(search_results=[chunk])
     embed = _mock_embed_model()
 
-    run_tool = make_run_tool_node(qdrant, embed)
+    run_tool = make_run_tool_node(qdrant, embed, "localhost:11434", "llama3")
     state = AgentState(
         messages=[
             {
@@ -197,7 +198,7 @@ def test_run_tool_accumulates_tool_results():
     qdrant = _mock_qdrant(search_results=[chunk])
     embed = _mock_embed_model()
 
-    run_tool = make_run_tool_node(qdrant, embed)
+    run_tool = make_run_tool_node(qdrant, embed, "localhost:11434", "llama3")
     existing_result = {
         "video_id": "en/prev",
         "file": "inbox/en/prev.mp3",
