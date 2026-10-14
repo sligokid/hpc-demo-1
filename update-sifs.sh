@@ -8,3 +8,4 @@ singularity pull ../qdrant.sif docker://qdrant/qdrant:latest
 singularity pull ../whisper-hpc.sif docker://sligokid/whisper-hpc:latest
 singularity pull ../whisper-sync.sif docker://sligokid/whisper-sync:latest
 singularity pull ../embeddings-api.sif docker://sligokid/embeddings-api:latest
+singularity pull ../agent.sif docker://sligokid/agent:latest
