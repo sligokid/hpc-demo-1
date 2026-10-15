@@ -1,0 +1,1 @@
+AI-generated avatar videos Synthetic video explainers, policy summaries, multilingual generic content Useful in limited cases but not core differentiation

@@ -1,4 +1,10 @@
-# SLICK+ HPC Demo — Multilingual Whisper Fine-Tuning & Knowledge Extraction Pipeline
+# SLICK+ HPC Demo — The Video First Company Brain
+
+## How work really gets done
+
+HPC-Enhanced Generative AI for Hyper-Personalized Knowledge Sharing in Large Enterprises. This experiment aims to validate and scale a new generative AI module that transforms internal tacit knowledge, captured through short-form video, into hyper-personalized, real-time learning content tailored to each employee’s role, behavior, and moment-of-need. The core innovation lies in combining generative AI, multilingual transcription, and behavioral personalization to address a persistent problem in large, distributed workplaces: the loss, inaccessibility, and underutilization of institutional know-how. Traditional learning management systems fail to capture informal insights and peer knowledge that are critical for onboarding, retention, and productivity. 
+
+People first. AI assisted. Searchable by default. Structured for managers. Ready for agents later.
 
 **Goal: Turning speech & video into machine-readable knowledge at HPC scale.**
 

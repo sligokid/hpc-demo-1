@@ -1,0 +1,1 @@
+Permissions-aware API / MCP-style access.

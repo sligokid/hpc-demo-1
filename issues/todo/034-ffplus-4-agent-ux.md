@@ -1,0 +1,1 @@
+In addition, we plan to incorporate a conversational ‘GenAI UX’ interface, allowing employees to interact directly with the system in natural language. This not only aligns with emerging user expectations but also enhances personalization by enabling real-time, dialog-based adaptation of knowledge delivery.
