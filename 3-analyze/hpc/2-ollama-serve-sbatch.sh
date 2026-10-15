@@ -37,6 +37,7 @@ SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 OLLAMA_SIF=${OLLAMA_SIF:-$SCRATCH/ollama.sif}
 OLLAMA_MODELS_DIR=$SCRATCH/ollama-models
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
+MODELS=("llama3:latest" "qwen2.5:3b")  # layers 1-9: llama3, layer 10 agent: qwen2.5
 # ----------------------------------
 
 mkdir -p logs "$OLLAMA_MODELS_DIR"
@@ -89,6 +90,20 @@ until curl -sf "http://localhost:${OLLAMA_PORT}/api/tags" > /dev/null 2>&1; do
 done
 
 echo "Ollama is ready after ${ELAPSED}s."
+
+echo "============================================"
+echo "--- Ensuring models are pulled... ---"
+for MODEL in "${MODELS[@]}"; do
+    echo "Pulling $MODEL..."
+    singularity exec \
+        --rocm \
+        --bind "$OLLAMA_MODELS_DIR:/ollama-models" \
+        --env OLLAMA_MODELS=/ollama-models \
+        --env OLLAMA_HOST=localhost:${OLLAMA_PORT} \
+        "$OLLAMA_SIF" \
+        ollama pull "$MODEL"
+done
+echo "Models ready."
 
 # Write endpoint file atomically
 TMPFILE=$(mktemp "${ENDPOINT_FILE}.XXXXXX")

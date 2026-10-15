@@ -4,7 +4,7 @@
 # waiting for each health check to pass before continuing.
 #
 # Services restarted (in dependency order):
-#   ollama       — Llama 3 inference (port 11434)
+#   ollama       — LLM inference: qwen2.5:3b (tool-calling), llama3 (generation) (port 11434)
 #   qdrant       — vector database   (port 6333)
 #   embed-server — encoding service  (port 8765)
 #   index-server — indexing service  (port 8766)
@@ -72,8 +72,9 @@ _wait_healthy() {
 _wait_healthy ollama       180   # first-run model pull can be slow
 echo ""
 echo "============================================"
-echo "--- Ensuring llama3 is pulled... ---"
+echo "--- Ensuring models are pulled... ---"
 docker compose exec ollama ollama pull llama3:latest
+docker compose exec ollama ollama pull qwen2.5:3b
 
 _wait_healthy qdrant        60
 _wait_healthy embed-server 180   # model load takes ~90s on CPU
