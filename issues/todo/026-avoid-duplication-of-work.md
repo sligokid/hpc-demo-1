@@ -1,0 +1,4 @@
+Large organizations today face a growing challenge in retaining, accessing, and activating their institutional knowledge, particularly tacit knowledge embedded in human experience, informal collaboration, and day-to-day problem-solving. This challenge is acute in hybrid or remote workplaces, where peer-to-peer learning and organic knowledge flow are disrupted. Research shows that organizations lose up to $42.5 million annually due to knowledge silos, redundant work, and poor onboarding.
+
+Fix: When a user creates a slick - immediately identify duplicates based on title + description + tags + transcript (using embedding similarity) and ask the user if they want to use the existing slick instead. If they do, create a link between the two sliks. If they don't, create a new slick.
+Tag similar videos together and link them together - this is a feature we will market!

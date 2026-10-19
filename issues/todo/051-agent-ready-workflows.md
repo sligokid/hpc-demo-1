@@ -1,0 +1,3 @@
+AI agents will need more than access to company documents. They will need to understand workflows, exceptions, decisions, responsibilities, risks, permissions and the judgement behind how work actually happens
+
+Most enterprise AI tools will start with written sources: SharePoint, Notion, Slack, tickets, wikis, SOPs and databases. Slick+ can own the missing layer: The knowledge that was never written down. In operational organisations, people rarely write markdown files or perfect SOPs describing how things really work. They show it, explain it, demonstrate it and pass it on through colleagues. Video is the natural capture layer for tacit, contextual know-how.
