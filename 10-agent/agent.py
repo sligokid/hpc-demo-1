@@ -239,6 +239,7 @@ def _ollama_chat(
         "model": model,
         "messages": _serialize_messages(messages),
         "stream": False,
+        "options": {"temperature": 0},
     }
     if tools:
         payload["tools"] = tools
