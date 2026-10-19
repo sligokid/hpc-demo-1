@@ -144,7 +144,8 @@ TOOLS_SCHEMA = [
             "name": "generate_playlist",
             "description": (
                 "Generate an ordered playlist of videos for a learning or task goal. "
-                "Use this when the user asks to build a playlist or learning path. "
+                "ALWAYS call this tool when the user asks for a playlist or confirms they want one. "
+                "Never write a playlist as text — always call this tool. "
                 "The draft will be shown for approval before being saved."
             ),
             "parameters": {
