@@ -1,12 +1,66 @@
-# SLICK+ HPC Demo — The Video First Company Brain
+# SLICK+ HPC — The Video First Company Brain
+HPC-Enhanced Generative AI Agent for Hyper-Personalized Knowledge Sharing in Large Enterprises.
+
+**Goal: Turning speech & video into machine-readable knowledge at HPC scale.**
 
 ## How work really gets done
 
-HPC-Enhanced Generative AI for Hyper-Personalized Knowledge Sharing in Large Enterprises. This experiment aims to validate and scale a new generative AI module that transforms internal tacit knowledge, captured through short-form video, into hyper-personalized, real-time learning content tailored to each employee’s role, behavior, and moment-of-need. The core innovation lies in combining generative AI, multilingual transcription, and behavioral personalization to address a persistent problem in large, distributed workplaces: the loss, inaccessibility, and underutilization of institutional know-how. Traditional learning management systems fail to capture informal insights and peer knowledge that are critical for onboarding, retention, and productivity. 
+This experiment aims to validate and scale a new generative AI module that transforms internal tacit knowledge, captured through short-form video, into hyper-personalized, real-time learning content tailored to each employee’s role, behavior, and moment-of-need. The core innovation lies in combining generative AI, multilingual transcription, and behavioral personalization to address a persistent problem in large, distributed workplaces: the loss, inaccessibility, and underutilization of institutional know-how. Traditional learning management systems fail to capture informal insights and peer knowledge that are critical for onboarding, retention, and productivity. 
 
 People first. AI assisted. Searchable by default. Structured for managers. Ready for agents later.
 
-**Goal: Turning speech & video into machine-readable knowledge at HPC scale.**
+## Problem? 
+1. Training a speech recognition model from scratch for multiple languages is prohibitively expensive and slow. 
+2. Transcription & Translation using fine-tuned checkpoints requires open source, open weight models.
+3. Summarisation and Categorisation of video content at scale is challenging.
+4. Data sovereignty, data governance and secure transferral of data between cloud and HPC is a priority. 
+5. Sentiment of a video often fluctuates throughout the video, and a single score does not capture the full picture.
+6. How can we group, index, search, retrieve and rank videos in a way that is useful for business users?
+7. How are all the videos related to each other?
+8. How can we have a conversation with our video knowledge base ?
+
+
+## Solution
+1. Fine-tune `openai/whisper` for multiple languages using Google FLEURS dataset on HPC
+2. Inference pipeline transformimg video to transcript using fine-tuned speech recognition models.
+3. Feature extraction from transcript (title, description, tags, goals, and skills) via LLM.
+4. Cloud to HPC transfer pipeline for data transfer and governance via rclone.
+5. Sentiment analysis over chunks of video to form an average sentiment score.
+6. A searchable Vector database ok knowledge for similarity search, clustering, and drill-down/aggregation.
+7. An interactive knowlege graph to show relationships between videos.
+8. A RAG based chat agent that can answer questions about the video knowledge base.
+
+## Example Agent interactions
+
+**Factual search** (`search_knowledge_base`):
+```
+> What is Slick+ and how does it work?
+```
+
+**Creator / title lookup** (`search_knowledge_base` → `get_video_metadata`):
+```
+> Which video features Linda Hegarty and what are the key topics?
+```
+
+**Full transcript** (`get_full_transcript`):
+```
+> Give me the full transcript of the Slick+ intro video
+```
+
+**Summary Generation** (`generate_summary`):
+```
+> Create a summary of the Slick+ intro video
+```
+
+**Playlist Generation** (`generate_playlist`):
+```
+> Create a Into to Slick Playlist for a new hire
+```
+
+**Multi-hop** (agent calls multiple tools autonomously):
+```
+> What are the main topics covered in the AI videos and who are the speakers?
+```
 
 ---
 
@@ -53,7 +107,7 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
   ┌──────────────────────────────────────────────────────────────────────────┐
   │                        STAGE 5: SENTIMENT                                │
   │  sentiment.py — cardiffnlp/twitter-roberta-base-sentiment-latest         │
-  │  Majority-vote label + signed mean score across transcript chunks         │
+  │  Majority-vote label + signed mean score across transcript chunks        │
   └──────────────────────────────┬───────────────────────────────────────────┘
                                  │  { sentiment_label, sentiment_score }
                                  ▼
@@ -68,18 +122,19 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
   │                          STAGE 7: INDEX                                  │
   │  index_server.py — Flask (F-index · port 8766)                           │
   │  Writes chunk vectors → Qdrant video_chunks                              │
-  │  Writes video metadata → Qdrant video_metadata  (E-qdrant · port 6333)  │
+  │  Writes video metadata → Qdrant video_metadata  (E-qdrant · port 6333)   │
   └──────────────────────────────┬───────────────────────────────────────────┘
                                  │
-                    ┌────────────┴─────────────┐
-                    ▼                           ▼
-  ┌────────────────────────┐   ┌───────────────────────────────────────────┐
-  │      STAGE 8: SEARCH   │   │               STAGE 9: GRAPH              │
-  │  search.py             │   │  graph.py — knowledge graph (nodes/edges) │
-  │  Semantic nearest-     │   │  playlist.py — ranked personalised        │
-  │  neighbour lookup over │   │  playlist from video_metadata             │
-  │  video_chunks          │   │  (G-graph)                                │
-  └────────────────────────┘   └───────────────────────────────────────────┘
+                    ┌────────────┴──────────┬──────────────────────┐
+                    ▼                       ▼                      ▼
+  ┌──────────────────────┐  ┌───────────────────────────┐  ┌───────────────────────────┐
+  │   STAGE 8: SEARCH    │  │      STAGE 9: GRAPH       │  │     STAGE 10: AGENT       │
+  │  search.py           │  │  graph.py — knowledge     │  │  agent.py — LangGraph     │
+  │  Semantic nearest-   │  │  graph (nodes/edges)      │  │  conversational agent     │
+  │  neighbour lookup    │  │  playlist.py — ranked     │  │  Factual Q&A, summaries,  │
+  │  over video_chunks   │  │  personalised playlist    │  │  playlists with human     │
+  │                      │  │  (G-graph)                │  │  approval gate            │
+  └──────────────────────┘  └───────────────────────────┘  └───────────────────────────┘
                                  │
            rclone (C-sync · every 5 min)
                                  ▼
@@ -94,192 +149,19 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 
 ---
 
-## Local Development
+## Models Used in the Pipeline
 
-### Setup
+| Variable / Config | Model | Stage | Role |
+|---|---|---|---|
+| `MODEL_ID` | `openai/whisper-small` | 1-train / 2-inference | Fine-tuned ASR — transcription and ES→EN translation |
+| `SENTIMENT_MODEL` | `cardiffnlp/twitter-roberta-base-sentiment-latest` | 5-sentiment | Per-chunk sentiment label and score |
+| `EMBED_MODEL` | `intfloat/multilingual-e5-large` | 6-embed / 8-search / 10-agent | Text embedding — 1024-dim L2-normalised vectors |
+| `GENERATE_MODEL` | `llama3:latest` | 3-analyze / 10-agent | Metadata extraction (title, description, tags, goals, skills); `generate_summary` / `generate_playlist` |
+| `AGENT_MODEL` | `qwen2.5:3b` | 10-agent | LangGraph tool-calling and reasoning |
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+## Development
 
-### Run Full Pipeline Locally
-
-Start required services (each in its own terminal):
-
-```bash
-ollama serve && ollama pull llama3.1:8b   # Llama 3 for 3-analyze
-docker run -p 6333:6333 qdrant/qdrant     # Qdrant for 7-index / 8-search / 9-graph
-6-embed/local/1-start-embed-server.sh     # embedding server (port 8765)
-7-index/local/2-start-index-server.sh     # index server (port 8766)
-```
-
-Then run the pipeline:
-
-```bash
-./pipeline-local.sh
-
-# Or run directly with options
-python pipeline.py --lang en
-python pipeline.py --file sync/input/en/sample.mp3
-```
-
-### Run via Docker Compose
-
-```bash
-docker compose up
-```
-
-All services (Ollama, Qdrant, embed-server, index-server, dev) are defined in `docker-compose.yml`.
-
----
-
-## Testing
-
-```bash
-# Unit tests — all stages
-pytest 2-inference/test_infer.py
-pytest 3-analyze/test_analyze.py
-pytest 5-sentiment/
-pytest 6-embed/
-pytest 7-index/
-pytest 8-search/
-pytest 9-graph/
-
-# Or run all at once
-pytest 2-inference/ 3-analyze/ 5-sentiment/ 6-embed/ 7-index/ 8-search/ 9-graph/
-
-# Smoke tests
-bash 4-file-sync/test-sync.sh
-bash 7-index/local/3-test-index-curl.sh
-
-# Shell script tests (BATS)
-make test
-```
-
-No GPU, model weights, or running services required for unit tests — all external dependencies are mocked.
-
----
-
-### Launch the Pipeline Locally (Docker)
-
-**Prerequisites:** Docker Desktop running, `rclone` installed and configured (see [`4-file-sync/README.md`](4-file-sync/README.md)).
-
-```bash
-# Start (or restart) all persistent services — ollama, qdrant, embed-server, index-server
-./restart-services-docker.sh
-
-# Rebuild images first if you've changed code
-./restart-services-docker.sh --build
-```
-
-Services and ports once healthy:
-
-| Service | Port | Dashboard |
-|---|---|---|
-| `ollama` | 11434 | — |
-| `qdrant` | 6333 | http://localhost:6333/dashboard |
-| `embed-server` | 8765 | http://localhost:8765/health |
-| `index-server` | 8766 | http://localhost:8766/health |
-
-Then run the pipeline:
-
-```bash
-./pipeline-docker.sh
-```
-
----
-
-### Launch the Pipeline on LUMI
-
-**Prerequisites:** Singularity SIFs in scratch (`whisper-hpc.sif`, `whisper-sync.sif`, `ollama.sif`, `embeddings-api.sif`, `qdrant.sif`), rclone config at `~/.config/rclone/rclone.conf`, and Llama weights pulled (see `3-analyze/hpc/3-ollama-pull-llama3.sh`).
-
-```bash
-cd /scratch/project_465003359/mcgowank/hpc-demo-1
-
-# Start (or restart) all services — cancels any running instances, resubmits all, resubmits itself every 12 h
-sbatch restart-services-sbatch.sh                    # A-restart
-```
-
-`restart-services-sbatch.sh` submits B-ollama → C-sync → D-embed → E-qdrant → F-index → Z-poll in the correct dependency order, then reschedules itself every 12 hours to keep services fresh.
-
-Wait for B-ollama, D-embed, E-qdrant, and F-index to reach `R` (running) and write their endpoint files to `$SCRATCH` before processing begins.
-
-```
-             JOBID PARTITION     NAME     USER ST       TIME  NODES
-          22100084   small-g B-ollama mcgowank  R      12:31      1
-          22100150     small   C-sync mcgowank  R       8:17      1
-          22100201   small-g   D-embed mcgowank  R       6:04      1
-          22100210     small E-qdrant mcgowank  R       5:58      1
-          22100212     small  F-index mcgowank  R       5:51      1
-          22100106     small   Z-poll mcgowank PD       0:00      1
-```
-
-### Manual Batch Submission
-
-```bash
-# Process all pending files
-./pipeline-hpc-submit.sh
-
-# Restrict to one language
-./pipeline-hpc-submit.sh --lang en
-
-# Chain with a dependency
-JID=$(sbatch --parsable 3-analyze/hpc/2-ollama-serve-sbatch.sh)
-./pipeline-hpc-submit.sh --dependency after:$JID
-```
-
-### Graph and Playlist (on demand)
-
-After files are indexed, run the graph job to produce `sync/output/graph.json`, `graph.html`, and playlist JSON:
-
-```bash
-sbatch 9-graph/hpc/graph-sbatch.sh
-sbatch 9-graph/hpc/graph-sbatch.sh --user engineer@org.com --top-n 10
-```
-
-## Automated HPC Pipeline (LUMI)
-
-Eight self-resubmitting SLURM jobs run the pipeline unattended. Each is a persistent service or polling loop that resubmits itself on exit.
-
-| Job | Script | Role |
-|---|---|---|
-| `A-restart` | `restart-services-sbatch.sh` | Cancels and resubmits all services every 12 h |
-| `B-ollama` | `3-analyze/hpc/2-ollama-serve-sbatch.sh` | Persistent Ollama GPU daemon (Llama 3) |
-| `C-sync` | `4-file-sync/hpc/sync-sbatch.sh` | rclone loop — Drive ↔ LUMI every 5 min |
-| `D-embed` | `6-embed/hpc/1-embed-serve-sbatch.sh` | Embedding server (multilingual-e5-large) |
-| `E-qdrant` | `7-index/hpc/1-qdrant-serve-sbatch.sh` | Qdrant vector DB service |
-| `F-index` | `7-index/hpc/2-index-serve-sbatch.sh` | Index server — writes to Qdrant |
-| `G-graph` | `9-graph/hpc/graph-sbatch.sh` | Graph + playlist generation (on demand) |
-| `Z-poll` | `pipeline-hpc-poll.sh` | Pipeline poller — launches array jobs every 10 min |
-| *(array)* | `pipeline-hpc-sbatch.sh` | One SLURM task per audio file (GPU) |
-
-
-
-> **Known issue:** There is a race condition between Z-poll and running pipeline tasks — duplicate jobs can be submitted if a file has not finished processing before the next poll cycle. This is relatively harmless (the `.done` file guards against double-indexing) but could waste GPU resources if a job stalls.
-
-### Monitoring & Management
-
-```bash
-# Active jobs
-squeue --me
-
-# Logs
-tail -f logs/sync-slurm-<jobid>.out       # C-sync
-tail -f logs/poll-slurm-<jobid>.out       # Z-poll
-tail -f logs/<jobid>_<taskid>.out         # pipeline array tasks
-tail -f logs/embed-slurm-<jobid>.out      # D-embed
-tail -f logs/index-slurm-<jobid>.out      # F-index
-tail -f logs/graph-slurm-<jobid>.out      # G-graph
-
-# Manifests
-cat logs/sync-manifest.txt                # files synced from Drive
-cat logs/pipeline-manifest-*.txt          # files submitted for processing
-
-# Cancel everything
-scancel --me
-```
+See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup, Docker, HPC launch instructions, testing, and monitoring.
 
 ## Repository Structure
 
@@ -294,6 +176,7 @@ scancel --me
 | [`7-index/`](7-index/README.md) | Index server — `POST /index` and `POST /metadata` write to Qdrant (port 8766) |
 | [`8-search/`](8-search/README.md) | Semantic nearest-neighbour search over indexed transcript chunks |
 | [`9-graph/`](9-graph/README.md) | Knowledge graph builder and personalised playlist generator |
+| [`10-agent/`](10-agent/README.md) | LangGraph conversational agent — factual Q&A, summaries, playlists with human approval gate |
 | [`pipeline.py`](pipeline.py) | End-to-end orchestrator: infer → analyze → sentiment → embed → index |
 | [`pipeline.yaml`](pipeline.yaml) | Central configuration (model, server URLs, feature flags) |
 | `pipeline-local.sh` | Run full pipeline locally with native Python and Ollama |
@@ -303,6 +186,8 @@ scancel --me
 | `pipeline-hpc-poll.sh` | Self-resubmitting scheduler — polls for new files every 10 minutes |
 | `profiles/<user>.json` | Per-user profile for playlist personalisation |
 | `roles.yaml` | Role → tag mapping used by `9-graph/playlist.py` |
+
+
 
 ## References
 

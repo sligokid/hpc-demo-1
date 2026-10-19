@@ -1,0 +1,1 @@
+We are looking for solutions that support multiple languages, natural language audio tracks for training courses, and have the ability to create an SOP-trained chatbot which can quickly answer questions that new hires might have during their shift.
