@@ -40,7 +40,7 @@ fi
 
 for dir in "${SEARCH_DIRS[@]}"; do
     [ -d "$dir" ] || continue
-    for f in "$dir"/*.{mp3,mp4,wav,flac,m4a,ogg}; do
+    for f in "$dir"/*.{mp3,mp4,mov,wav,flac,m4a,ogg,webm}; do
         [ -f "$f" ] || continue
         [ -f "$f.done" ] && continue
         echo "$f"  # relative to project root
