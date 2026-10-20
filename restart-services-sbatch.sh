@@ -23,7 +23,7 @@ SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 mkdir -p "$PROJECT_ROOT/logs"
 
 wait_for_endpoint() {
-    local file=$1 label=$2 timeout=${3:-600} elapsed=0
+    local file=$1 label=$2 timeout=${3:-900} elapsed=0
     echo "Waiting for $label..."
     until [ -f "$file" ]; do
         [ "$elapsed" -ge "$timeout" ] && { echo "ERROR: $file not found after ${timeout}s" >&2; exit 1; }
