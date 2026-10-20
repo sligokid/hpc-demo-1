@@ -18,8 +18,19 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
+SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 
 mkdir -p "$PROJECT_ROOT/logs"
+
+wait_for_endpoint() {
+    local file=$1 label=$2 timeout=${3:-600} elapsed=0
+    echo "Waiting for $label..."
+    until [ -f "$file" ]; do
+        [ "$elapsed" -ge "$timeout" ] && { echo "ERROR: $file not found after ${timeout}s" >&2; exit 1; }
+        sleep 10; elapsed=$((elapsed + 10))
+    done
+    echo "  $label ready after ${elapsed}s ($(cat "$file"))"
+}
 
 echo "============================================"
 echo "Job ID  : $SLURM_JOB_ID"
@@ -41,8 +52,7 @@ sleep 120
 echo "Submitting B-ollama..."
 OLLAMA_JID=$(sbatch --parsable "$PROJECT_ROOT/3-analyze/hpc/2-ollama-serve-sbatch.sh")
 echo "  Job ID: $OLLAMA_JID"
-echo "Waiting 2 minutes for B-ollama to start..."
-sleep 120
+wait_for_endpoint "$SCRATCH/ollama.endpoint" "B-ollama"
 
 echo "Submitting C-sync..."
 sbatch "$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"
@@ -50,17 +60,17 @@ sbatch "$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"
 echo "Submitting D-embed..."
 EMBED_JID=$(sbatch --parsable "$PROJECT_ROOT/6-embed/hpc/1-embed-serve-sbatch.sh")
 echo "  Job ID: $EMBED_JID"
+wait_for_endpoint "$SCRATCH/embed.endpoint" "D-embed"
 
 echo "Submitting E-qdrant..."
 QDRANT_JID=$(sbatch --parsable "$PROJECT_ROOT/7-index/hpc/1-qdrant-serve-sbatch.sh")
 echo "  Job ID: $QDRANT_JID"
-echo "Waiting 2 minutes for E-qdrant to write endpoint file..."
-sleep 120
-
+wait_for_endpoint "$SCRATCH/qdrant.endpoint" "E-qdrant"
 
 echo "Submitting F-index..."
 INDEX_JID=$(sbatch --parsable "$PROJECT_ROOT/7-index/hpc/2-index-serve-sbatch.sh")
 echo "  Job ID: $INDEX_JID"
+wait_for_endpoint "$SCRATCH/index.endpoint" "F-index"
 
 # Z-poll must not start until Ollama, embed server, and index server are all running.
 echo "Submitting Z-poll (depends on B-ollama:$OLLAMA_JID, D-embed:$EMBED_JID, F-index:$INDEX_JID)..."
