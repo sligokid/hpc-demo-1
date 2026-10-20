@@ -18,7 +18,7 @@ languages:
 # --- Infer stage ---
 infer:
   enabled: true
-  audio_extensions: [.mp3, .mp4, .wav, .flac, .m4a, .ogg]
+  audio_extensions: [.mp3, .mp4, .mov, .wav, .flac, .m4a, .ogg]
 
 # --- Analyze stage ---
 analyze:
