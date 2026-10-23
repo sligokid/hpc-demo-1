@@ -4,7 +4,7 @@
 
 ## What to build
 
-Replace the hardcoded `_MAX_TRANSCRIPT_WORDS = 3000` constant in `3-analyze/analyze.py` with a configurable `max_words` parameter. The pipeline reads `max_transcript_words` from `pipeline.yaml` and passes it through to `analyze()`. A value of `0` means no truncation. Local `pipeline.yaml` keeps `max_transcript_words: 3000` to preserve current behaviour. The HPC pipeline config sets `max_transcript_words: 0` to pass the full transcript.
+Replace the hardcoded `_MAX_TRANSCRIPT_WORDS = 3000` constant in `3-analyze/analyze.py` with a configurable `max_words` parameter. The pipeline reads `max_transcript_words` from `pipeline.yaml` and passes it through to `analyze()`. A value of `0` means no truncation (unlimited). The default for both the function and CLI is `0`. Local `pipeline.yaml` sets `max_transcript_words: 3000` to cap runs for speed. HPC requires no override — the unlimited default applies automatically.
 
 This unblocks the SOP stage, which needs full-transcript access on HPC, and fixes the silent content loss that affects long videos in the existing analyze stage.
 
