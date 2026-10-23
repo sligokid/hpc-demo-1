@@ -141,6 +141,8 @@ def main():
                         help="Override ollama_host from config")
     parser.add_argument("--analyze-model", default=None,
                         help="Override analyze.model from config (e.g. llama3.1:8b)")
+    parser.add_argument("--max-words", type=int, default=None,
+                        help="Max transcript words sent to model (0 = unlimited). Omit for unlimited.")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -148,6 +150,8 @@ def main():
         cfg["analyze"]["ollama_host"] = args.ollama_host
     if args.analyze_model:
         cfg["analyze"]["model"] = args.analyze_model
+    if args.max_words is not None:
+        cfg["max_transcript_words"] = args.max_words
 
     checkpoints = PROJECT_ROOT / cfg["checkpoints"]
     results = PROJECT_ROOT / cfg["results"]
@@ -159,6 +163,7 @@ def main():
     embed_url = os.getenv("EMBEDDING_SERVER_URL", cfg.get("embed", {}).get("server_url", "http://localhost:8765"))
     index_url = os.getenv("INDEX_SERVER_URL", cfg.get("index", {}).get("server_url", "http://localhost:8766"))
     sentiment_enabled = cfg.get("sentiment", {}).get("enabled", False)
+    max_transcript_words = cfg.get("max_transcript_words", 0)
 
     if args.file:
         audio_path = pathlib.Path(args.file)
@@ -234,7 +239,7 @@ def main():
         metadata = None
         if analyze_enabled:
             try:
-                metadata = analyze(transcript, analyze_model, ollama_host)
+                metadata = analyze(transcript, analyze_model, ollama_host, max_words=max_transcript_words)
             except Exception as exc:
                 print(f"  ANALYZE ERROR — {exc}")
                 errors += 1
