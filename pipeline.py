@@ -267,6 +267,8 @@ def main():
                     metadata.update(sentiment_data)
             except Exception as exc:
                 print(f"  SENTIMENT ERROR — {exc}")
+                errors += 1
+                continue
 
         # --- Embed + Index ---
         if embed_enabled and segments:
@@ -280,6 +282,8 @@ def main():
                     print(f"  metadata   -> indexed")
             except Exception as exc:
                 print(f"  EMBED ERROR — {exc}")
+                errors += 1
+                continue
 
         # --- SOP ---
         if sop_enabled:

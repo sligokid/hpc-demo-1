@@ -43,7 +43,17 @@ for dir in "${SEARCH_DIRS[@]}"; do
     for f in "$dir"/*.{mp3,mp4,mov,wav,flac,m4a,ogg,webm}; do
         [ -f "$f" ] || continue
         [ -f "$f.done" ] && continue
-        echo "$f"  # relative to project root
+        if [ -f "$f.processing" ]; then
+            job_id=$(cut -d. -f1 "$f.processing" 2>/dev/null)
+            if [ -n "$job_id" ] && squeue --jobs="$job_id" --noheader --format="%i" 2>/dev/null | grep -q "^${job_id}$"; then
+                echo "  skip (in-progress, job $job_id): $f" >&2
+                continue
+            else
+                echo "  removing stale .processing (job $job_id gone): $f" >&2
+                rm -f "$f.processing"
+            fi
+        fi
+        echo "$f"
     done
 done > "$MANIFEST"
 

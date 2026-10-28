@@ -17,6 +17,7 @@
 #SBATCH --output=logs/%A_%a.out
 #SBATCH --account=project_465003359
 #SBATCH --partition=small-g
+#SBATCH --no-requeue
 
 set -euo pipefail
 
@@ -62,6 +63,19 @@ fi
 AUDIO_FILE=${FILES[$SLURM_ARRAY_TASK_ID]}
 # Manifest contains paths relative to project root — map straight into /workspace
 AUDIO_CONTAINER="/workspace/$AUDIO_FILE"
+
+# --- In-progress claim ---
+PROCESSING_FLAG="${PROJECT_ROOT}/${AUDIO_FILE}.processing"
+_TMPFLAG="${PROCESSING_FLAG}.${SLURM_JOB_ID}.${SLURM_ARRAY_TASK_ID}.tmp"
+echo "${SLURM_JOB_ID}.${SLURM_ARRAY_TASK_ID}" > "$_TMPFLAG"
+if ! ln "$_TMPFLAG" "$PROCESSING_FLAG" 2>/dev/null; then
+    rm -f "$_TMPFLAG"
+    echo "Skipping — already claimed: $(cat "$PROCESSING_FLAG" 2>/dev/null)" >&2
+    exit 0
+fi
+rm -f "$_TMPFLAG"
+# Remove flag on exit (success or failure) — .done persists; .processing is transient
+trap 'rm -f "$PROCESSING_FLAG"' EXIT
 
 echo "============================================"
 echo "Job       : $SLURM_JOB_ID  Array task: $SLURM_ARRAY_TASK_ID"
