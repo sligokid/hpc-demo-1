@@ -7,7 +7,7 @@ Generates a Standard Operating Procedure (`.sop.md` + `.sop.pdf`) from a transcr
 ## Prerequisites
 
 - Ollama running locally with `qwen2.5:7b` pulled
-- Python virtual environment activated with `xhtml2pdf`, `markdown`, `requests`, and `pyyaml` installed
+- Python virtual environment activated with `xhtml2pdf`, `markdown`, and `requests` installed
 - A completed transcript (`.transcript.txt`) and analysis (`.analysis.json`) for the target video — produced by `2-inference` and `3-analyze`
 
 ```bash
@@ -42,7 +42,6 @@ And writes:
 |----------|---------|-------------|
 | `MODEL` | `qwen2.5:7b` | Ollama model to use for SOP generation |
 | `OLLAMA_HOST` | `localhost:11434` | Ollama API host |
-| `CONFIG` | `11-sop/sop_config.yaml` | Path to config file with company name, department, approver |
 
 ```bash
 MODEL=llama3.1:8b bash 11-sop/local/run.sh results/en/myvideo
@@ -50,15 +49,9 @@ MODEL=llama3.1:8b bash 11-sop/local/run.sh results/en/myvideo
 
 ---
 
-## Config
+## Organisation fields
 
-Edit `11-sop/sop_config.yaml` to set your organisation details:
-
-```yaml
-company_name: "Acme Corp"
-department: "Learning & Development"
-approver: "Jane Smith, Head of L&D"
-```
+`company_name`, `department`, and `approver` are inferred from the transcript by the LLM. If they cannot be determined, the SOP header shows `N/A`.
 
 ---
 

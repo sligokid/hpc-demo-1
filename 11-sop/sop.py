@@ -5,7 +5,6 @@ Usage:
     python sop.py --transcript results/en/myvideo.transcript.txt \
                   --analysis  results/en/myvideo.analysis.json \
                   --output    results/en/myvideo \
-                  --config    11-sop/sop_config.yaml \
                   --ollama-host localhost:11434 \
                   --model qwen2.5:7b
 """
@@ -17,20 +16,10 @@ import sys
 
 import markdown as md_lib
 import requests
-import yaml
 
 
 TEMPLATE_PATH = pathlib.Path(__file__).parent / "sop_template.md"
 CSS_PATH = pathlib.Path(__file__).parent / "sop_style.css"
-
-
-# ---------------------------------------------------------------------------
-# Config
-# ---------------------------------------------------------------------------
-
-def _load_config(config_path: pathlib.Path) -> dict:
-    with open(config_path) as f:
-        return yaml.safe_load(f)
 
 
 # ---------------------------------------------------------------------------
@@ -77,6 +66,9 @@ def build_prompt(transcript: str, analysis: dict, template: str, max_words: int 
         '- "materials": list of strings\n'
         '- "procedure": list of {"heading": string, "steps": list of strings} — heading must be a plain title with NO numbering (e.g. "Packing", not "5.1. Packing")\n'
         '- "associated_documents": list of {"name": string, "description": string}\n'
+        '- "company_name": name of the organisation this SOP is for, inferred from the transcript (string, or "" if not mentioned)\n'
+        '- "department": department or team context inferred from the transcript (string, or "" if not mentioned)\n'
+        '- "approver": suggested approver role or name inferred from the transcript (string, or "" if not mentioned)\n'
     )
 
 
@@ -107,20 +99,20 @@ def _call_ollama(prompt: str, model: str, ollama_host: str) -> str:
 # Markdown renderer
 # ---------------------------------------------------------------------------
 
-def _render_markdown(data: dict, cfg: dict) -> str:
+def _render_markdown(data: dict) -> str:
     lines = [
         "# STANDARD OPERATING PROCEDURE (SOP)",
         "",
         # Trailing "  " (two spaces) on each line is the Markdown hard line break
         # syntax. Without them the renderer collapses consecutive lines into one
         # paragraph, merging all header fields onto a single line in the PDF.
-        f"**Company Name:** {cfg.get('company_name', '[Insert Company Name]')}  ",
-        f"**Department:** {cfg.get('department', '[Insert Department]')}  ",
+        f"**Company Name:** {data.get('company_name') or 'N/A'}  ",
+        f"**Department:** {data.get('department') or 'N/A'}  ",
         f"**Document Title:** {data.get('document_title', '[Insert Document Title]')}  ",
         "**Document Number:** [Insert Document Number]  ",
         "**Version:** 1.0  ",
         "**Effective Date:** [Insert Effective Date]  ",
-        f"**Approved By:** {cfg.get('approver', '[Insert Name/Title of Approver]')}",
+        f"**Approved By:** {data.get('approver') or 'N/A'}",
         "",
         "---",
         "",
@@ -212,7 +204,6 @@ def generate(
     transcript: str,
     analysis: dict,
     output_stem: pathlib.Path,
-    config_path: pathlib.Path,
     ollama_host: str = "localhost:11434",
     model: str = "qwen2.5:7b",
     max_words: int = 0,
@@ -225,7 +216,6 @@ def generate(
         return md_path, pdf_path
 
     template = TEMPLATE_PATH.read_text()
-    cfg = _load_config(config_path)
 
     prompt = build_prompt(transcript, analysis, template, max_words)
     raw = _call_ollama(prompt, model, ollama_host)
@@ -236,7 +226,7 @@ def generate(
         md_path.write_text(f"<!-- WARNING: raw LLM output -->\n\n{raw}\n")
         return md_path, pdf_path
 
-    md_text = _render_markdown(data, cfg)
+    md_text = _render_markdown(data)
     md_path.write_text(md_text)
     _md_to_pdf(md_text, pdf_path)
 
@@ -252,7 +242,6 @@ def main():
     parser.add_argument("--transcript", required=True, help="Path to transcript .txt file")
     parser.add_argument("--analysis", required=True, help="Path to analysis .json file")
     parser.add_argument("--output", required=True, help="Output stem (e.g. results/en/myvideo)")
-    parser.add_argument("--config", default=str(pathlib.Path(__file__).parent / "sop_config.yaml"))
     parser.add_argument("--ollama-host", default="localhost:11434")
     parser.add_argument("--model", default="qwen2.5:7b")
     parser.add_argument("--max-words", type=int, default=0,
@@ -268,7 +257,6 @@ def main():
         transcript=transcript,
         analysis=analysis,
         output_stem=output_stem,
-        config_path=pathlib.Path(args.config),
         ollama_host=args.ollama_host,
         model=args.model,
         max_words=args.max_words,
