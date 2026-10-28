@@ -18,7 +18,7 @@ SIF=${SIF:-$SCRATCH/agent.sif}
 HF_CACHE=${HF_CACHE:-$SCRATCH/hf_cache}
 OLLAMA_ENDPOINT_FILE=$SCRATCH/ollama.endpoint
 QDRANT_ENDPOINT_FILE=$SCRATCH/qdrant.endpoint
-AGENT_MODEL="${AGENT_MODEL:-qwen2.5:3b}"
+AGENT_MODEL="${AGENT_MODEL:-qwen2.5:7b}"
 EMBED_MODEL="${EMBED_MODEL:-intfloat/multilingual-e5-large}"
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

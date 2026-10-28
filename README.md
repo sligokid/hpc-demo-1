@@ -167,7 +167,7 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 | `SENTIMENT_MODEL` | `cardiffnlp/twitter-roberta-base-sentiment-latest` | 5-sentiment | Per-chunk sentiment label and score |
 | `EMBED_MODEL` | `intfloat/multilingual-e5-large` | 6-embed / 8-search / 10-agent | Text embedding — 1024-dim L2-normalised vectors |
 | `GENERATE_MODEL` | `llama3:latest` | 3-analyze / 10-agent | Metadata extraction (title, description, tags, goals, skills); `generate_summary` / `generate_playlist` |
-| `AGENT_MODEL` | `qwen2.5:3b` | 10-agent | LangGraph tool-calling and reasoning |
+| `AGENT_MODEL` | `qwen2.5:7b` | 10-agent | LangGraph tool-calling and reasoning |
 | `sop.model` | `qwen2.5:7b` | 11-sop | SOP generation from transcript + analysis |
 
 ## Development
