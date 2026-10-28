@@ -97,6 +97,11 @@ def _get_run_sentiment():
     return mod.run_sentiment, mod._split_text
 
 
+def _get_sop_generate():
+    mod = _import_from("sop", PROJECT_ROOT / "11-sop" / "sop.py")
+    return mod.generate
+
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -163,6 +168,8 @@ def main():
     embed_url = os.getenv("EMBEDDING_SERVER_URL", cfg.get("embed", {}).get("server_url", "http://localhost:8765"))
     index_url = os.getenv("INDEX_SERVER_URL", cfg.get("index", {}).get("server_url", "http://localhost:8766"))
     sentiment_enabled = cfg.get("sentiment", {}).get("enabled", False)
+    sop_enabled = cfg.get("sop", {}).get("enabled", False)
+    sop_model = cfg.get("sop", {}).get("model", "qwen2.5:7b")
     max_transcript_words = cfg.get("max_transcript_words", 0)
 
     if args.file:
@@ -189,6 +196,7 @@ def main():
     analyze = _get_analyze() if analyze_enabled else None
     run_sentiment, split_text = (_get_run_sentiment() if sentiment_enabled
                                  else (None, None))
+    sop_generate = _get_sop_generate() if sop_enabled else None
 
     errors = 0
 
@@ -272,6 +280,25 @@ def main():
                     print(f"  metadata   -> indexed")
             except Exception as exc:
                 print(f"  EMBED ERROR — {exc}")
+
+        # --- SOP ---
+        if sop_enabled:
+            if transcript_file.exists() and analysis_file.exists():
+                try:
+                    analysis_data = json.loads(analysis_file.read_text())
+                    md_path, pdf_path = sop_generate(
+                        transcript=transcript_file.read_text(),
+                        analysis=analysis_data,
+                        output_stem=out_dir / stem,
+                        ollama_host=ollama_host,
+                        model=sop_model,
+                        max_words=max_transcript_words,
+                    )
+                    print(f"  sop        -> {md_path.relative_to(PROJECT_ROOT)}")
+                except Exception as exc:
+                    print(f"  SOP ERROR — {exc}")
+            else:
+                print(f"  SOP SKIP   — transcript or analysis missing")
 
         # --- Flag as done ---
         done_flag.touch()
