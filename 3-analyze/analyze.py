@@ -4,28 +4,16 @@ import sys
 import requests
 
 
-# CONTEXT WINDOW LIMITATION — see issues/003-larger-context-model.md
-#
-# llama3 (8B) has an 8192-token context window. The instruction preamble uses
-# ~300 tokens and num_predict reserves 512, leaving ~7380 tokens for the
-# transcript (~5700 words). At ~1.3 words/token, 3000 words ≈ 2300 tokens —
-# we truncate well before the limit so Ollama never silently drops content.
-#
-# For long videos (>~20 min) the truncation means analyze() only sees the first
-# third of the transcript. To fix properly, swap to a model with a larger
-# context window (e.g. llama3.1:70b at 128k, mistral-nemo at 128k,
-# or gemma2:27b at 8k but better compression) — see the issue for tradeoffs.
-_MAX_TRANSCRIPT_WORDS = 3000
-
-
-def _truncate_transcript(transcript: str) -> str:
-    words = transcript.split()
-    if len(words) <= _MAX_TRANSCRIPT_WORDS:
+def _truncate_transcript(transcript: str, max_words: int) -> str:
+    if max_words == 0:
         return transcript
-    return " ".join(words[:_MAX_TRANSCRIPT_WORDS]) + "\n[transcript truncated]"
+    words = transcript.split()
+    if len(words) <= max_words:
+        return transcript
+    return " ".join(words[:max_words]) + "\n[transcript truncated]"
 
 
-def build_prompt(transcript):
+def build_prompt(transcript, max_words=0):
     return (
         "You are a learning content analyst. "
         "Extract structured metadata from the following training video transcript.\n\n"
@@ -36,7 +24,7 @@ def build_prompt(transcript):
         '- "goals": a list of learning goals (what the viewer will be able to do after watching)\n'
         '- "skills": a list of skills covered\n\n'
         "Transcript:\n"
-        + _truncate_transcript(transcript)
+        + _truncate_transcript(transcript, max_words)
     )
 
 
@@ -59,12 +47,12 @@ def call_ollama(prompt, model, ollama_host):
     return response.json()["response"]
 
 
-def analyze(transcript, model, ollama_host="localhost:11434"):
+def analyze(transcript, model, ollama_host="localhost:11434", max_words=0):
     if not transcript.strip():
         print("Error: transcript is empty.", file=sys.stderr)
         sys.exit(1)
 
-    prompt = build_prompt(transcript)
+    prompt = build_prompt(transcript, max_words)
     raw = call_ollama(prompt, model, ollama_host)
 
     try:
@@ -94,6 +82,12 @@ def main():
         default="localhost:11434",
         help="Ollama host to connect to (default: localhost:11434).",
     )
+    parser.add_argument(
+        "--max-words",
+        type=int,
+        default=0,
+        help="Max transcript words sent to the model (0 = no limit, default: 0).",
+    )
     args = parser.parse_args()
 
     if args.transcript == "-":
@@ -102,7 +96,7 @@ def main():
         with open(args.transcript) as f:
             transcript = f.read()
 
-    metadata = analyze(transcript, args.model, args.ollama_host)
+    metadata = analyze(transcript, args.model, args.ollama_host, max_words=args.max_words)
     print(json.dumps(metadata, indent=2))
 
 

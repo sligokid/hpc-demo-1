@@ -153,3 +153,70 @@ def test_invalid_json_response_exits_1(capsys, mocker):
     assert exc.value.code == 1
     err = capsys.readouterr().err
     assert "not valid json {{{" in err
+
+
+# --- transcript truncation ---
+
+def test_truncation_applied_when_max_words_set():
+    long_transcript = " ".join([f"word{i}" for i in range(5000)])
+    prompt = analyze.build_prompt(long_transcript, max_words=3000)
+    assert "[transcript truncated]" in prompt
+    words_in_prompt = prompt.split("Transcript:\n", 1)[1].split()
+    assert len(words_in_prompt) <= 3002  # 3000 words + 2 tokens from "[transcript truncated]"
+
+
+def test_no_truncation_when_max_words_zero():
+    long_transcript = " ".join([f"word{i}" for i in range(5000)])
+    prompt = analyze.build_prompt(long_transcript, max_words=0)
+    assert "[transcript truncated]" not in prompt
+    assert "word4999" in prompt
+
+
+def test_short_transcript_not_truncated():
+    short = " ".join([f"word{i}" for i in range(100)])
+    prompt = analyze.build_prompt(short, max_words=3000)
+    assert "[transcript truncated]" not in prompt
+
+
+def test_analyze_passes_max_words_to_prompt(mocker):
+    mock = mocker.patch("requests.post")
+    mock.return_value.ok = True
+    mock.return_value.json.return_value = {"response": VALID_RESPONSE}
+
+    long_transcript = " ".join([f"word{i}" for i in range(5000)])
+    analyze.analyze(long_transcript, "llama3", max_words=3000)
+
+    payload = mock.call_args[1]["json"]
+    assert "[transcript truncated]" in payload["prompt"]
+
+
+def test_cli_default_is_unlimited(tmp_path, mocker):
+    """No --max-words flag → full transcript is sent (default is 0 = unlimited)."""
+    mock = mocker.patch("requests.post")
+    mock.return_value.ok = True
+    mock.return_value.json.return_value = {"response": VALID_RESPONSE}
+
+    long_transcript = " ".join([f"word{i}" for i in range(5000)])
+    transcript_file = tmp_path / "t.txt"
+    transcript_file.write_text(long_transcript)
+
+    import sys
+    sys.argv = ["analyze.py", "--transcript", str(transcript_file), "--model", "llama3"]
+    analyze.main()
+
+    payload = mock.call_args[1]["json"]
+    assert "[transcript truncated]" not in payload["prompt"]
+    assert "word4999" in payload["prompt"]
+
+
+def test_analyze_no_truncation_with_max_words_zero(mocker):
+    mock = mocker.patch("requests.post")
+    mock.return_value.ok = True
+    mock.return_value.json.return_value = {"response": VALID_RESPONSE}
+
+    long_transcript = " ".join([f"word{i}" for i in range(5000)])
+    analyze.analyze(long_transcript, "llama3", max_words=0)
+
+    payload = mock.call_args[1]["json"]
+    assert "[transcript truncated]" not in payload["prompt"]
+    assert "word4999" in payload["prompt"]

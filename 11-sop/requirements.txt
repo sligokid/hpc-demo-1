@@ -1,0 +1,4 @@
+markdown
+xhtml2pdf
+requests
+pyyaml

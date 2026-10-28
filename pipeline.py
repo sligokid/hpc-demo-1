@@ -97,6 +97,11 @@ def _get_run_sentiment():
     return mod.run_sentiment, mod._split_text
 
 
+def _get_sop_generate():
+    mod = _import_from("sop", PROJECT_ROOT / "11-sop" / "sop.py")
+    return mod.generate
+
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -141,6 +146,8 @@ def main():
                         help="Override ollama_host from config")
     parser.add_argument("--analyze-model", default=None,
                         help="Override analyze.model from config (e.g. llama3.1:8b)")
+    parser.add_argument("--max-words", type=int, default=None,
+                        help="Max transcript words sent to model (0 = unlimited). Omit for unlimited.")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -148,6 +155,8 @@ def main():
         cfg["analyze"]["ollama_host"] = args.ollama_host
     if args.analyze_model:
         cfg["analyze"]["model"] = args.analyze_model
+    if args.max_words is not None:
+        cfg["max_transcript_words"] = args.max_words
 
     checkpoints = PROJECT_ROOT / cfg["checkpoints"]
     results = PROJECT_ROOT / cfg["results"]
@@ -159,6 +168,9 @@ def main():
     embed_url = os.getenv("EMBEDDING_SERVER_URL", cfg.get("embed", {}).get("server_url", "http://localhost:8765"))
     index_url = os.getenv("INDEX_SERVER_URL", cfg.get("index", {}).get("server_url", "http://localhost:8766"))
     sentiment_enabled = cfg.get("sentiment", {}).get("enabled", False)
+    sop_enabled = cfg.get("sop", {}).get("enabled", False)
+    sop_model = cfg.get("sop", {}).get("model", "qwen2.5:7b")
+    max_transcript_words = cfg.get("max_transcript_words", 0)
 
     if args.file:
         audio_path = pathlib.Path(args.file)
@@ -184,6 +196,7 @@ def main():
     analyze = _get_analyze() if analyze_enabled else None
     run_sentiment, split_text = (_get_run_sentiment() if sentiment_enabled
                                  else (None, None))
+    sop_generate = _get_sop_generate() if sop_enabled else None
 
     errors = 0
 
@@ -234,7 +247,7 @@ def main():
         metadata = None
         if analyze_enabled:
             try:
-                metadata = analyze(transcript, analyze_model, ollama_host)
+                metadata = analyze(transcript, analyze_model, ollama_host, max_words=max_transcript_words)
             except Exception as exc:
                 print(f"  ANALYZE ERROR — {exc}")
                 errors += 1
@@ -254,6 +267,8 @@ def main():
                     metadata.update(sentiment_data)
             except Exception as exc:
                 print(f"  SENTIMENT ERROR — {exc}")
+                errors += 1
+                continue
 
         # --- Embed + Index ---
         if embed_enabled and segments:
@@ -267,6 +282,29 @@ def main():
                     print(f"  metadata   -> indexed")
             except Exception as exc:
                 print(f"  EMBED ERROR — {exc}")
+                errors += 1
+                continue
+
+        # --- SOP ---
+        if sop_enabled:
+            if transcript_file.exists() and analysis_file.exists():
+                try:
+                    analysis_data = json.loads(analysis_file.read_text())
+                    md_path, pdf_path = sop_generate(
+                        transcript=transcript_file.read_text(),
+                        analysis=analysis_data,
+                        output_stem=out_dir / stem,
+                        ollama_host=ollama_host,
+                        model=sop_model,
+                        max_words=max_transcript_words,
+                    )
+                    print(f"  sop        -> {md_path.relative_to(PROJECT_ROOT)}")
+                except Exception as exc:
+                    print(f"  SOP ERROR — {exc}")
+                    errors += 1
+                    continue
+            else:
+                print(f"  SOP SKIP   — transcript or analysis missing")
 
         # --- Flag as done ---
         done_flag.touch()

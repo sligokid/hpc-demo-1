@@ -124,7 +124,17 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
   │  Writes chunk vectors → Qdrant video_chunks                              │
   │  Writes video metadata → Qdrant video_metadata  (E-qdrant · port 6333)   │
   └──────────────────────────────┬───────────────────────────────────────────┘
-                                 │
+                                 │  sync/output/<lang>/<stem>.analysis.json
+                                 │                         .transcript.txt
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                        STAGE 11: SOP                                     │
+  │  sop.py — Qwen 2.5 via Ollama                                            │
+  │  Generates a Standard Operating Procedure from transcript + analysis     │
+  └──────────────────────────────┬───────────────────────────────────────────┘
+                                 │  sync/output/<lang>/<stem>.sop.md
+                                 │                         .sop.pdf
+                                 ▼
                     ┌────────────┴──────────┬──────────────────────┐
                     ▼                       ▼                      ▼
   ┌──────────────────────┐  ┌───────────────────────────┐  ┌───────────────────────────┐
@@ -157,7 +167,8 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 | `SENTIMENT_MODEL` | `cardiffnlp/twitter-roberta-base-sentiment-latest` | 5-sentiment | Per-chunk sentiment label and score |
 | `EMBED_MODEL` | `intfloat/multilingual-e5-large` | 6-embed / 8-search / 10-agent | Text embedding — 1024-dim L2-normalised vectors |
 | `GENERATE_MODEL` | `llama3:latest` | 3-analyze / 10-agent | Metadata extraction (title, description, tags, goals, skills); `generate_summary` / `generate_playlist` |
-| `AGENT_MODEL` | `qwen2.5:3b` | 10-agent | LangGraph tool-calling and reasoning |
+| `AGENT_MODEL` | `qwen2.5:7b` | 10-agent | LangGraph tool-calling and reasoning |
+| `sop.model` | `qwen2.5:7b` | 11-sop | SOP generation from transcript + analysis |
 
 ## Development
 
@@ -177,7 +188,8 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup, Docker, HPC launch instruc
 | [`8-search/`](8-search/README.md) | Semantic nearest-neighbour search over indexed transcript chunks |
 | [`9-graph/`](9-graph/README.md) | Knowledge graph builder and personalised playlist generator |
 | [`10-agent/`](10-agent/README.md) | LangGraph conversational agent — factual Q&A, summaries, playlists with human approval gate |
-| [`pipeline.py`](pipeline.py) | End-to-end orchestrator: infer → analyze → sentiment → embed → index |
+| [`11-sop/`](11-sop/local/README.md) | SOP generator — produces `.sop.md` and `.sop.pdf` from transcript + analysis via Qwen 2.5 |
+| [`pipeline.py`](pipeline.py) | End-to-end orchestrator: infer → analyze → sentiment → embed → index → sop |
 | [`pipeline.yaml`](pipeline.yaml) | Central configuration (model, server URLs, feature flags) |
 | `pipeline-local.sh` | Run full pipeline locally with native Python and Ollama |
 | `pipeline-docker.sh` | Run full pipeline inside Docker Compose |

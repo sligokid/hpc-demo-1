@@ -38,3 +38,8 @@ embed:
 # --- Index stage (7-index: receives vectors, writes to Qdrant) ---
 index:
   server_url: http://localhost:8766  # index-server endpoint
+
+# --- SOP stage (11-sop: generates Standard Operating Procedure from transcript + analysis) ---
+sop:
+  enabled: true
+  model: qwen2.5:7b

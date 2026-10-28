@@ -5,3 +5,4 @@ venv*
 *.DS_Store
 sync*
 10-agent/local/.env
+results*

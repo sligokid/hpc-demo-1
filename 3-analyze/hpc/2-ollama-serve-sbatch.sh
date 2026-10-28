@@ -20,7 +20,7 @@
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/ollama-slurm-%j.out
 #SBATCH --error=logs/ollama-slurm-%j.err
@@ -37,7 +37,7 @@ SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 OLLAMA_SIF=${OLLAMA_SIF:-$SCRATCH/ollama.sif}
 OLLAMA_MODELS_DIR=$SCRATCH/ollama-models
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
-MODELS=("llama3:latest" "qwen2.5:3b")  # layers 1-9: llama3, layer 10 agent: qwen2.5
+MODELS=("llama3:latest" "qwen2.5:7b")  # llama3: analyze, qwen2.5:7b: agent + sop
 # ----------------------------------
 
 mkdir -p logs "$OLLAMA_MODELS_DIR"

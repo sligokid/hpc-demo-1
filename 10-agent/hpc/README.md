@@ -11,7 +11,7 @@ How to build the SIF and run the agent in an interactive Singularity session on 
    bash 10-agent/docker/build.sh
    ```
 
-2. Ollama running on the target node with `qwen2.5:3b` pulled (see below).
+2. Ollama running on the target node with `qwen2.5:7b` pulled (see below).
 
 ---
 
@@ -36,7 +36,7 @@ bash update-sifs.sh
 The Ollama service (`3-analyze/hpc/2-ollama-serve-sbatch.sh`) starts the server but does **not** pull any models. Both models must be pulled once after Ollama is healthy:
 
 - `llama3` — used by the analysis pipeline (`3-analyze`)
-- `qwen2.5:3b` — used by the agent for tool-calling and summarisation
+- `qwen2.5:7b` — used by the agent for tool-calling and summarisation
 
 The endpoint is written to `/scratch/project_465003359/mcgowank/ollama.endpoint` when ready.
 
@@ -46,7 +46,7 @@ OLLAMA_ENDPOINT=$(cat /scratch/project_465003359/mcgowank/ollama.endpoint)
 
 # Pull both models via HTTP
 curl "http://${OLLAMA_ENDPOINT}/api/pull" -d '{"name":"llama3"}'
-curl "http://${OLLAMA_ENDPOINT}/api/pull" -d '{"name":"qwen2.5:3b"}'
+curl "http://${OLLAMA_ENDPOINT}/api/pull" -d '{"name":"qwen2.5:7b"}'
 ```
 
 Or if you have an interactive session on the same node as Ollama:
@@ -54,7 +54,7 @@ Or if you have an interactive session on the same node as Ollama:
 ```bash
 export OLLAMA_HOST=localhost:11434
 ollama pull llama3
-ollama pull qwen2.5:3b
+ollama pull qwen2.5:7b
 ```
 
 Models are stored in `$SCRATCH/ollama-models` (bind-mounted into the Ollama container) and only need to be pulled once per Ollama volume.
@@ -84,7 +84,7 @@ Type a question at the `>` prompt. Type `exit` to quit.
 |---|---|---|
 | `QDRANT_HOST` | `localhost:6333` | Qdrant host:port |
 | `OLLAMA_HOST` | `localhost:11434` | Ollama host:port |
-| `AGENT_MODEL` | `qwen2.5:3b` | Ollama model name |
+| `AGENT_MODEL` | `qwen2.5:7b` | Ollama model name |
 | `EMBED_MODEL` | `intfloat/multilingual-e5-large` | HuggingFace embed model |
 | `HF_HOME` | `/root/.cache/huggingface` | Model cache path inside container |
 
