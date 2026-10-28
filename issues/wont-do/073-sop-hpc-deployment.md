@@ -1,3 +1,7 @@
+## Status
+
+Won't do as written. This issue assumes a separate SOP Docker image (072) which was also rejected. The SOP stage runs inside `whisper-hpc.sif` as part of `pipeline.py` — no separate container or SLURM array job is needed. The correct fix is to add `xhtml2pdf` and `markdown` to `requirements.txt` so they are included when `whisper-hpc.sif` is next rebuilt. See issue 074.
+
 ## Parent PRD
 
 `prd/11-sop/prd.md`
