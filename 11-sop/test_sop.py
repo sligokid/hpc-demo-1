@@ -159,6 +159,17 @@ def test_does_not_skip_if_only_md_exists(tmp_path, config_file, mock_ollama):
     mock_ollama.assert_called_once()
 
 
+# --- PDF generation ---
+
+def test_pdf_is_created_and_non_empty(tmp_path, config_file, mock_ollama):
+    stem = tmp_path / "output"
+    sop.generate(TRANSCRIPT, ANALYSIS, stem, config_file)
+
+    pdf = tmp_path / "output.sop.pdf"
+    assert pdf.exists(), "PDF file was not created"
+    assert pdf.stat().st_size > 0, "PDF file is empty"
+
+
 # --- invalid JSON response ---
 
 def test_invalid_json_writes_warning_header(tmp_path, config_file, mocker):

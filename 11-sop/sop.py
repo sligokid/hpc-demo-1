@@ -15,11 +15,13 @@ import json
 import pathlib
 import sys
 
+import markdown as md_lib
 import requests
 import yaml
 
 
 TEMPLATE_PATH = pathlib.Path(__file__).parent / "sop_template.md"
+CSS_PATH = pathlib.Path(__file__).parent / "sop_style.css"
 
 
 # ---------------------------------------------------------------------------
@@ -109,12 +111,15 @@ def _render_markdown(data: dict, cfg: dict) -> str:
     lines = [
         "# STANDARD OPERATING PROCEDURE (SOP)",
         "",
-        f"**Company Name:** {cfg.get('company_name', '[Insert Company Name]')}",
-        f"**Department:** {cfg.get('department', '[Insert Department]')}",
-        f"**Document Title:** {data.get('document_title', '[Insert Document Title]')}",
-        "**Document Number:** [Insert Document Number]",
-        "**Version:** 1.0",
-        "**Effective Date:** [Insert Effective Date]",
+        # Trailing "  " (two spaces) on each line is the Markdown hard line break
+        # syntax. Without them the renderer collapses consecutive lines into one
+        # paragraph, merging all header fields onto a single line in the PDF.
+        f"**Company Name:** {cfg.get('company_name', '[Insert Company Name]')}  ",
+        f"**Department:** {cfg.get('department', '[Insert Department]')}  ",
+        f"**Document Title:** {data.get('document_title', '[Insert Document Title]')}  ",
+        "**Document Number:** [Insert Document Number]  ",
+        "**Version:** 1.0  ",
+        "**Effective Date:** [Insert Effective Date]  ",
         f"**Approved By:** {cfg.get('approver', '[Insert Name/Title of Approver]')}",
         "",
         "---",
@@ -181,6 +186,25 @@ def _render_markdown(data: dict, cfg: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# PDF renderer
+# ---------------------------------------------------------------------------
+
+def _md_to_pdf(md_text: str, pdf_path: pathlib.Path) -> None:
+    """Convert Markdown text to a PDF file using xhtml2pdf with embedded CSS."""
+    from xhtml2pdf import pisa
+    css_text = CSS_PATH.read_text()
+    html_body = md_lib.markdown(md_text, extensions=["tables"])
+    html = (
+        "<!DOCTYPE html><html><head>"
+        "<meta charset='utf-8'>"
+        f"<style>{css_text}</style>"
+        f"</head><body>{html_body}</body></html>"
+    )
+    with open(pdf_path, "wb") as f:
+        pisa.CreatePDF(html, dest=f)
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -212,7 +236,9 @@ def generate(
         md_path.write_text(f"<!-- WARNING: raw LLM output -->\n\n{raw}\n")
         return md_path, pdf_path
 
-    md_path.write_text(_render_markdown(data, cfg))
+    md_text = _render_markdown(data, cfg)
+    md_path.write_text(md_text)
+    _md_to_pdf(md_text, pdf_path)
 
     return md_path, pdf_path
 
@@ -238,7 +264,7 @@ def main():
     output_stem = pathlib.Path(args.output)
     output_stem.parent.mkdir(parents=True, exist_ok=True)
 
-    md_path, _ = generate(
+    md_path, pdf_path = generate(
         transcript=transcript,
         analysis=analysis,
         output_stem=output_stem,
@@ -248,6 +274,7 @@ def main():
         max_words=args.max_words,
     )
     print(f"SOP written -> {md_path}")
+    print(f"PDF written -> {pdf_path}")
 
 
 if __name__ == "__main__":
