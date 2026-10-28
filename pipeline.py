@@ -301,6 +301,8 @@ def main():
                     print(f"  sop        -> {md_path.relative_to(PROJECT_ROOT)}")
                 except Exception as exc:
                     print(f"  SOP ERROR — {exc}")
+                    errors += 1
+                    continue
             else:
                 print(f"  SOP SKIP   — transcript or analysis missing")
 
