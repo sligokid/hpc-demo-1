@@ -1,3 +1,7 @@
+## Status
+
+Won't do. `sop.py` is now wired into `pipeline.py` as a standard pipeline stage (issue 071). It runs in the same environment as the rest of the pipeline and does not need its own Docker image.
+
 ## Parent PRD
 
 `prd/11-sop/prd.md`
