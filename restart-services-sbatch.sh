@@ -73,7 +73,7 @@ echo "  Job ID: $INDEX_JID"
 wait_for_endpoint "$SCRATCH/index.endpoint" "F-index"
 
 echo "Submitting G-teleprompter..."
-bash "$PROJECT_ROOT/11-sop/hpc/teleprompter-hpc-submit.sh"
+sbatch "$PROJECT_ROOT/11-sop/hpc/teleprompter-hpc-poll.sh"
 
 # Z-poll must not start until Ollama, embed server, and index server are all running.
 echo "Submitting Z-poll (depends on B-ollama:$OLLAMA_JID, D-embed:$EMBED_JID, F-index:$INDEX_JID)..."
