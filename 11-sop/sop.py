@@ -14,6 +14,8 @@ import json
 import pathlib
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+
 import markdown as md_lib
 
 from ollama_utils import _call_ollama
