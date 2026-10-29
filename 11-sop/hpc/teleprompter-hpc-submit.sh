@@ -1,16 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=G-teleprompter
-#SBATCH --partition=small
-#SBATCH --account=project_465003359
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=1G
-#SBATCH --time=00:10:00
-#SBATCH --output=logs/teleprompter-submit-%j.out
+# Scan sync/input/ for pending *.sop.md files, build a manifest, and submit
+# a SLURM array job to run teleprompter.py on each one.
+#
+# Usage:
+#   ./11-sop/hpc/teleprompter-hpc-submit.sh
 
 set -euo pipefail
 
-# cd to this script's dir so sbatch sets SLURM_SUBMIT_DIR=11-sop/hpc/ in the array job
 cd "$(dirname "${BASH_SOURCE[0]}")"
 PROJECT_ROOT="$(cd "../.." && pwd)"
 
@@ -40,6 +36,9 @@ fi
 echo "Pending SOPs : $N"
 echo "Manifest     : $MANIFEST"
 cat "$MANIFEST"
+echo ""
 
-JID=$(sbatch --array=0-$((N - 1)) ./teleprompter-sbatch.sh "$MANIFEST" --parsable)
+JID=$(sbatch --array=0-$((N - 1)) teleprompter-sbatch.sh "$MANIFEST" --parsable)
 echo "Submitted array job $JID ($N tasks)"
+echo "Monitor: squeue -u \$USER"
+echo "Logs   : $PROJECT_ROOT/logs/${JID}_*.out"
