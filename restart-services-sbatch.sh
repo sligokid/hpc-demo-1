@@ -42,7 +42,7 @@ trap 'sbatch --begin=now+12hours "$SLURM_SUBMIT_DIR/restart-services-sbatch.sh" 
 
 # Cancel services by name — safe to run inside a SLURM job (does not cancel this job).
 echo "Cancelling service jobs..."
-for job_name in B-ollama C-sync D-embed E-qdrant F-index Z-poll; do
+for job_name in B-ollama C-sync D-embed E-qdrant F-index G-teleprompter Z-poll; do
     scancel --name="$job_name" --user="$USER" 2>/dev/null || true
 done
 
@@ -53,6 +53,9 @@ echo "Submitting B-ollama..."
 OLLAMA_JID=$(sbatch --parsable "$PROJECT_ROOT/3-analyze/hpc/2-ollama-serve-sbatch.sh")
 echo "  Job ID: $OLLAMA_JID"
 wait_for_endpoint "$SCRATCH/ollama.endpoint" "B-ollama"
+
+echo "Submitting G-teleprompter..."
+sbatch "$PROJECT_ROOT/11-sop/hpc/teleprompter-hpc-submit.sh"
 
 echo "Submitting C-sync..."
 sbatch "$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"

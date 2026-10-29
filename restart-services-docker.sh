@@ -81,6 +81,12 @@ _wait_healthy embed-server 180   # model load takes ~90s on CPU
 _wait_healthy index-server  60
 
 echo ""
+echo "--- Running teleprompter for pending SOPs ---"
+find sync/input -name "*.sop.md" | sort | while read -r sop; do
+    bash 11-sop/docker/run-teleprompter.sh "$sop"
+done
+
+echo ""
 echo "============================================"
 echo "All services healthy."
 echo "  ollama       : http://localhost:11434"
