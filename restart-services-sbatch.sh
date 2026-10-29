@@ -54,9 +54,6 @@ OLLAMA_JID=$(sbatch --parsable "$PROJECT_ROOT/3-analyze/hpc/2-ollama-serve-sbatc
 echo "  Job ID: $OLLAMA_JID"
 wait_for_endpoint "$SCRATCH/ollama.endpoint" "B-ollama"
 
-echo "Submitting G-teleprompter..."
-sbatch "$PROJECT_ROOT/11-sop/hpc/teleprompter-hpc-submit.sh"
-
 echo "Submitting C-sync..."
 sbatch "$PROJECT_ROOT/4-file-sync/hpc/sync-sbatch.sh"
 
@@ -74,6 +71,9 @@ echo "Submitting F-index..."
 INDEX_JID=$(sbatch --parsable "$PROJECT_ROOT/7-index/hpc/2-index-serve-sbatch.sh")
 echo "  Job ID: $INDEX_JID"
 wait_for_endpoint "$SCRATCH/index.endpoint" "F-index"
+
+echo "Submitting G-teleprompter..."
+sbatch "$PROJECT_ROOT/11-sop/hpc/teleprompter-hpc-submit.sh"
 
 # Z-poll must not start until Ollama, embed server, and index server are all running.
 echo "Submitting Z-poll (depends on B-ollama:$OLLAMA_JID, D-embed:$EMBED_JID, F-index:$INDEX_JID)..."
