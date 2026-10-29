@@ -100,6 +100,24 @@ def test_strip_formatting_removes_bullets():
     assert "First item" in result
 
 
+# --- strip greeting ---
+
+def test_strip_greeting_removes_llm_intro():
+    cases = [
+        ("Hi, I'm John. In this video...", "In this video..."),
+        ("Hello I'm Qwen. Today we...", "Today we..."),
+        ("Hey, I'm Sarah! Let's get started.", "Let's get started."),
+        ("hi, I'm Alex. Welcome.", "Welcome."),
+    ]
+    for input_text, expected in cases:
+        assert teleprompter._strip_greeting(input_text) == expected
+
+
+def test_strip_greeting_leaves_non_greeting_untouched():
+    text = "In this video you will learn how to pack a shipment."
+    assert teleprompter._strip_greeting(text) == text
+
+
 # --- step number ---
 
 def test_step_number_named():
@@ -117,10 +135,10 @@ def test_step_number_beyond_list():
 def test_render_contains_all_sections():
     data = json.loads(VALID_LLM_RESPONSE)
     md = teleprompter._render_markdown(data)
-    assert "## Section 1: Hook & Intro" in md
-    assert "## Section 2: Step-by-Step Walkthrough" in md
-    assert "## Section 3: Common Pitfalls" in md
-    assert "## Section 4: Outro & Call to Action" in md
+    assert "## SECTION 1 — Hook & Intro" in md
+    assert "## SECTION 2 — Step-by-Step Walkthrough" in md
+    assert "## SECTION 3 — Common Pitfalls" in md
+    assert "## SECTION 4 — Outro & Call to Action" in md
 
 
 def test_render_presenter_placeholder():
@@ -139,14 +157,16 @@ def test_render_runtime_in_metadata():
 def test_render_step_numbers_written_out():
     data = json.loads(VALID_LLM_RESPONSE)
     md = teleprompter._render_markdown(data)
-    assert "### Step ONE: Packing" in md
-    assert "### Step TWO: Sealing" in md
+    assert "### STEP ONE — Packing" in md
+    assert "### STEP TWO — Sealing" in md
 
 
-def test_render_prerequisites_in_hook():
+def test_render_prerequisites_in_metadata():
     data = json.loads(VALID_LLM_RESPONSE)
     md = teleprompter._render_markdown(data)
-    assert "double-wall box" in md
+    # prerequisites are now the LLM's responsibility to weave into hook_audio;
+    # the renderer exposes them only via the video_goal metadata line
+    assert "**Video Goal:**" in md
 
 
 def test_render_pitfalls_omitted_when_false():
@@ -176,38 +196,35 @@ def test_render_no_bold_in_audio(tmp_path, mock_ollama):
     assert "Click Save to continue." in md
 
 
+def test_render_contains_checklist():
+    data = json.loads(VALID_LLM_RESPONSE)
+    md = teleprompter._render_markdown(data)
+    assert "SME Review Checklist" in md
+    assert "Sign-off" in md
+
+
 # --- generate (integration with mocked Ollama) ---
 
-def test_generate_writes_both_files(tmp_path, mock_ollama):
+def test_generate_writes_script_file(tmp_path, mock_ollama):
     stem = tmp_path / "output"
-    script_path, review_path = teleprompter.generate(SOP_TEXT, stem)
+    script_path = teleprompter.generate(SOP_TEXT, stem)
     assert script_path.exists()
-    assert review_path.exists()
 
 
 def test_generate_review_contains_checklist(tmp_path, mock_ollama):
     stem = tmp_path / "output"
-    _, review_path = teleprompter.generate(SOP_TEXT, stem)
-    review = review_path.read_text()
-    assert "Presenter Name" in review
-    assert "Sign-off" in review
+    script_path = teleprompter.generate(SOP_TEXT, stem)
+    content = script_path.read_text()
+    assert "Presenter Name" in content
+    assert "Sign-off" in content
 
 
-def test_generate_skips_if_both_exist(tmp_path, mock_ollama):
+def test_generate_skips_if_script_exists(tmp_path, mock_ollama):
     stem = tmp_path / "output"
     (tmp_path / "output.teleprompter.md").write_text("existing")
-    (tmp_path / "output.teleprompter.review.md").write_text("existing review")
 
     teleprompter.generate(SOP_TEXT, stem)
     mock_ollama.assert_not_called()
-
-
-def test_generate_does_not_skip_if_only_script_exists(tmp_path, mock_ollama):
-    stem = tmp_path / "output"
-    (tmp_path / "output.teleprompter.md").write_text("existing")
-
-    teleprompter.generate(SOP_TEXT, stem)
-    mock_ollama.assert_called_once()
 
 
 def test_generate_invalid_json_writes_warning(tmp_path, mocker):
