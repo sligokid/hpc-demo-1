@@ -2,3 +2,5 @@ markdown
 xhtml2pdf
 requests
 pyyaml
+pypdf
+python-docx
