@@ -29,110 +29,117 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 6. A searchable Vector database of knowledge for similarity search, clustering, and drill-down/aggregation.
 7. An interactive knowlege graph to show relationships between videos.
 8. A RAG based chat agent that can answer questions about the video knowledge base.
-9. SOP generation (`sop.py`) extracts structured operating procedures from transcripts + analysis; teleprompter generation (`teleprompter.py`) converts any SOP into speech-optimised presenter scripts.
+9. SOP file generation extracts structured operating procedures from transcripts + analysis; Teleprompter file generation converts any SOP into speech-optimised presenter scripts.
+
+## Example use cases
+
+**Feature Extraction, Auto Tagging**
+
+video ──▶ feature files.
+
+Upload a library of internal how-to videos. The pipeline transcribes, and extracts metadata and features such as title, description, tags, goals, and skills via LLM. The results are written to files:
+
+- `<stem>*.transcript.txt` 
+- `<stem>*.analysis.json`
+- `<stem>*.textgrid`
+
+Results can be used in Slick+ for video metadata enrichment. 
+
+
+**Capturing expert knowledge before someone leaves**
+
+Upload a recorded video of a departing expert walking through their key processes. The SOP generator turns the transcript + analysis into a structured Standard Operating Procedure document. 
+
+- `<stem>*.sop.md` 
+- `<stem>*.sop.pdf`
+
+Results can be edited, approved and signed off for sharing within Slick+
+
+
+**Video Presenter enablement at scale**
+
+A subject-matter expert writes and uploads a SOP. The teleprompter pipeline runs overnight on HPC, producing a speech-optimised script for every procedure document in the library — ready for recording the next morning.
+- `<stem>*.teleprompter.md`
+
+Results can be edited to provide supporting materials for video content generation within Slick+.
+
+## Agentic use cases (Experimental - Agent is local to LUMI)
+
+**Onboarding a new hire**
+Upload a library of internal how-to videos. The pipeline transcribes, tags, and indexes them. The new hire asks the agent questions in natural language — *"How do we handle a customer escalation?"* — and gets cited answers with timestamps, without watching every video.
+
+**Compliance and audit trails**
+Tag all videos with goals and skills at ingest time. Use the knowledge graph to verify that required training topics are covered, identify gaps, and export a graph visualisation for auditors.
+
+**Personalised learning playlists**
+A manager asks the agent to *"create an intro to Slick+ playlist for a new hire in sales"*. The agent retrieves relevant chunks, ranks them by role relevance, and presents a draft playlist for human approval before saving.
+
 
 ---
 
-## Pipeline Overview
+## Workflow Overview
 
 ```
-  ┌──────────────────────────────────────────────────────────────────────────┐
-  │                          STAGE 1: TRAINING                               │
-  │  Fine-tune openai/whisper-small on Google FLEURS                         │
-  │  en · es · fr · zh-CN · ar  (5 parallel SLURM GPU jobs)                  │
-  └──────────────────────────────┬───────────────────────────────────────────┘
-                                 │  checkpoints/<lang>/
-                                 ▼
-─────────────────────────────────────────────────────────────────────────────
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 1 · TRAINING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  ┌──────────────────┐
-  │   Google Drive   │◄── [ Upload mp3 / mp4 / wav / flac / m4a / ogg ]
-  │ whisper-sync/    │
-  │   input/         │
-  └────────┬─────────┘
-           │  rclone (C-sync · every 5 min)
-           ▼
-  ┌──────────────────┐
-  │  LUMI HPC        │
-  │   sync/input/    │
-  └────────┬─────────┘
-           │  Z-poll (every 10 min) → pipeline-hpc-submit.sh → SLURM array
-           ▼
-  ┌──────────────────────────────────────────────────────────────────────────┐
-  │                        STAGE 2: TRANSCRIBE                               │
-  │  infer.py — Whisper (AMD/ROCm GPU, fine-tuned checkpoint)                │
-  │  Chunked 30s windows · any-length audio · 5-second overlap               │
-  └──────────────────────────────┬───────────────────────────────────────────┘
-                                 │  sync/output/<lang>/<stem>.transcript.txt
-                                 │                         .segments.json
-                                 ▼
-  ┌──────────────────────────────────────────────────────────────────────────┐
-  │                         STAGE 3: ANALYSE                                 │
-  │  analyze.py — Llama 3 via Ollama (B-ollama GPU daemon)                   │
-  │  Extracts: title · description · tags · goals · skills                   │
-  └──────────────────────────────┬───────────────────────────────────────────┘
-                                 │  sync/output/<lang>/<stem>.analysis.json
-                                 ▼
-  ┌──────────────────────────────────────────────────────────────────────────┐
-  │                        STAGE 5: SENTIMENT                                │
-  │  sentiment.py — cardiffnlp/twitter-roberta-base-sentiment-latest         │
-  │  Majority-vote label + signed mean score across transcript chunks        │
-  └──────────────────────────────┬───────────────────────────────────────────┘
-                                 │  { sentiment_label, sentiment_score }
-                                 ▼
-  ┌──────────────────────────────────────────────────────────────────────────┐
-  │                          STAGE 6: EMBED                                  │
-  │  embed_server.py — intfloat/multilingual-e5-large (D-embed · port 8765)  │
-  │  Encodes transcript chunks → 1024-dim L2-normalised vectors              │
-  └──────────────────────────────┬───────────────────────────────────────────┘
-                                 │  { vectors: [{text, ts_start, ts_end, vector}] }
-                                 ▼
-  ┌──────────────────────────────────────────────────────────────────────────┐
-  │                          STAGE 7: INDEX                                  │
-  │  index_server.py — Flask (F-index · port 8766)                           │
-  │  Writes chunk vectors → Qdrant video_chunks                              │
-  │  Writes video metadata → Qdrant video_metadata  (E-qdrant · port 6333)   │
-  └──────────────────────────────┬───────────────────────────────────────────┘
-                                 │  sync/output/<lang>/<stem>.analysis.json
-                                 │                         .transcript.txt
-                                 ▼
-  ┌──────────────────────────────────────────────────────────────────────────┐
-  │                        STAGE 11: SOP                                     │
-  │  sop.py — Qwen 2.5 via Ollama                                            │
-  │  Generates a Standard Operating Procedure from transcript + analysis     │
-  └──────────────────────────────┬───────────────────────────────────────────┘
-                                 │  sync/output/<lang>/<stem>.sop.md
-                                 │                         .sop.pdf
-                                 ▼
-  ┌──────────────────────────────────────────────────────────────────────────┐
-  │               STAGE 11b: TELEPROMPTER  (standalone SLURM array)         │
-  │  teleprompter.py — Qwen 2.5 via Ollama                                  │
-  │  Input: any .sop.md/.txt/.pdf/.docx — not limited to pipeline output    │
-  │  teleprompter-hpc-submit.sh / teleprompter-hpc-poll.sh                  │
-  └──────────────────────────────┬───────────────────────────────────────────┘
-                                 │  sync/output/<lang>/<stem>.teleprompter.md
-                                 ▼
-                    ┌────────────┴──────────┬──────────────────────┐
-                    ▼                       ▼                      ▼
-  ┌──────────────────────┐  ┌───────────────────────────┐  ┌───────────────────────────┐
-  │   STAGE 8: SEARCH    │  │      STAGE 9: GRAPH       │  │     STAGE 10: AGENT       │
-  │  search.py           │  │  graph.py — knowledge     │  │  agent.py — LangGraph     │
-  │  Semantic nearest-   │  │  graph (nodes/edges)      │  │  conversational agent     │
-  │  neighbour lookup    │  │  playlist.py — ranked     │  │  Factual Q&A, summaries,  │
-  │  over video_chunks   │  │  personalised playlist    │  │  playlists with human     │
-  │                      │  │  (G-graph)                │  │  approval gate            │
-  └──────────────────────┘  └───────────────────────────┘  └───────────────────────────┘
-                                 │
-           rclone (C-sync · every 5 min)
-                                 ▼
-  ┌──────────────────┐
-  │   Google Drive   │◄── sync/output/ (transcripts · analysis · graph.html)
-  │ whisper-sync/    │
-  │   output/        │
-  └──────────────────┘
+  Google FLEURS  ──▶  SLURM GPU array (1 job / lang)  ──▶  checkpoints/<lang>/
+                      en · es · fr · zh-CN · ar              fine-tuned Whisper
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 2 · INGESTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [Upload audio]  ──▶  Google Drive        ──▶  rclone  ──▶  LUMI sync/input/
+  mp3/mp4/wav/flac      whisper-sync/input/      5 min         poll 10 min
+                                                                     │
+                                                                     ▼
+                                                          pipeline-hpc-submit.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 3 · INFERENCE  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  TRANSCRIBE ──▶ ANALYSE ──▶ SENTIMENT ──▶ EMBED ──▶ INDEX (Qdrant)
+  stage 2        stage 3      stage 5      stage 6   stage 7│
+                                                            │
+                               ┌──────────────┬────────────┘
+                               │              │              │
+                               ▼              ▼              ▼
+                            SEARCH          GRAPH          AGENT
+                           stage 8         stage 9        stage 10
+                           search.py       graph.py       agent.py
+                                         playlist.py    (LangGraph)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  4 · SOP  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  transcript + analysis  ──▶  SOP
+                               Qwen · stage 11a
+                               .sop.md · .sop.pdf
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  5 · TELEPROMPTER  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  any .sop.md / .txt / .pdf / .docx  ──▶  TELEPROMPTER SCRIPT
+                                           Qwen · stage 11b
+                                           .teleprompter.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 6 · OUTPUT SYNC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  LUMI sync/output/  ──▶  rclone  ──▶  Google Drive whisper-sync/output/
+  .transcript.txt          5 min
+  .segments.json
+  .analysis.json
+  .sop.md 
+  .sop.pdf
+  .teleprompter.md
+  graph.html
+
 ```
-
-> **Note:** Stage 4 (file sync) is the background rclone loop — not an inline processing stage. It feeds `sync/input/` and drains `sync/output/` independently on a 5-minute cycle.
 
 ---
 
