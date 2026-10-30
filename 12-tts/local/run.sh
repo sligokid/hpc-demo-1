@@ -11,7 +11,7 @@
 #
 # Environment variables:
 #   OLLAMA_HOST   host:port for Ollama  (default: localhost:11434)
-#   VOICE         phonon voice name     (default: Freya)
+#   VOICE         TTS voice name        (default: male)
 
 set -euo pipefail
 
@@ -20,8 +20,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 OLLAMA_HOST=${OLLAMA_HOST:-localhost:11434}
-VOICE=${VOICE:-Freya}
-MODEL=${MODEL:-phonon}
+VOICE=${VOICE:-male}
+MODEL=${MODEL:-lfm3-audio}
 
 LANG=$(basename "$(dirname "$TELEPROMPTER_FILE")")
 STEM=$(basename "$TELEPROMPTER_FILE" .teleprompter.md)

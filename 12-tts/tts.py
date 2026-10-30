@@ -9,7 +9,7 @@ Usage:
     python 12-tts/tts.py --input  results/en/myvideo.teleprompter.md \
                          --output results/en/myvideo \
                          --ollama-host localhost:11434 \
-                         --voice Freya
+                         --voice male
 """
 
 import argparse
@@ -24,8 +24,8 @@ import requests
 
 
 CHUNK_LIMIT = 4096
-DEFAULT_VOICE = "Freya"
-DEFAULT_MODEL = "phonon"
+DEFAULT_VOICE = "male"
+DEFAULT_MODEL = "lfm3-audio"
 
 
 # ---------------------------------------------------------------------------
