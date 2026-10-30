@@ -45,26 +45,37 @@ Upload a library of internal how-to videos. The pipeline transcribes, and extrac
 
 Results can be used in Slick+ for video metadata enrichment.
 
----
+### Video to SOP
 
-### Capturing expert knowledge before someone leaves
+*video ──▶ SOP document*
 
-Upload a recorded video of a departing expert walking through their key processes. The SOP generator turns the transcript + analysis into a structured Standard Operating Procedure document.
+An AI workflow that takes a recorded video as source material and produces a structured SOP within 15 minutes. The SOP is a text, Word, or PDF file.
 
 - `<stem>.sop.md`
 - `<stem>.sop.pdf`
 
-Results can be edited, approved and signed off for sharing within Slick+.
+---
+
+### Voice-only to SOP
+
+*audio ──▶ SOP document*
+
+An AI workflow that turns a recorded discussion between colleagues (with no video) into an SOP.
+
+- `<stem>.sop.md`
+- `<stem>.sop.pdf`
 
 ---
 
-### Video Presenter enablement at scale
+### SOP to video script
 
-A subject-matter expert writes and uploads a SOP. The teleprompter pipeline runs overnight on HPC, producing a speech-optimised script for every procedure document in the library — ready for recording the next morning.
+*SOP document ──▶ video script*
+
+The reverse direction: taking an existing written SOP and converting it into a short video script, with AI doing the drafting. A subject-matter expert would review the script before anything is recorded. 
+
+Ideally, the review step is built into the flow rather than left as an afterthought. (WIP)
 
 - `<stem>.teleprompter.md`
-
-Results can be edited to provide supporting materials for video content generation within Slick+.
 
 ---
 
@@ -122,21 +133,29 @@ A manager asks the agent to *"create an intro to Slick+ playlist for a new hire 
                                          playlist.py    (LangGraph)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  4 · SOP  
+  4 · AGENT  (Experimental — runs locally on LUMI)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  user question  ──▶  LangGraph agent  ──▶  answer / playlist / summary
+                       Qwen · stage 10       cited sources + timestamps
+                       agent.py              human approval gate (artefacts)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  5 · SOP  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   transcript + analysis  ──▶  SOP
                                Qwen · stage 11a
                                .sop.md · .sop.pdf
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  5 · TELEPROMPTER  
+  6 · TELEPROMPTER  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   any .sop.md / .txt / .pdf / .docx  ──▶  TELEPROMPTER SCRIPT
                                            Qwen · stage 11b
                                            .teleprompter.md
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 6 · OUTPUT SYNC
+  7 · OUTPUT SYNC
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   LUMI sync/output/  ──▶  rclone  ──▶  Google Drive whisper-sync/output/
