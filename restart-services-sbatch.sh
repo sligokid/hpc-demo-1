@@ -42,7 +42,7 @@ trap 'sbatch --begin=now+12hours "$SLURM_SUBMIT_DIR/restart-services-sbatch.sh" 
 
 # Cancel services by name — safe to run inside a SLURM job (does not cancel this job).
 echo "Cancelling service jobs..."
-for job_name in B-ollama C-sync D-embed E-qdrant F-index Z-poll; do
+for job_name in B-ollama C-sync D-embed E-qdrant F-index G-teleprompter Z-poll; do
     scancel --name="$job_name" --user="$USER" 2>/dev/null || true
 done
 
@@ -71,6 +71,9 @@ echo "Submitting F-index..."
 INDEX_JID=$(sbatch --parsable "$PROJECT_ROOT/7-index/hpc/2-index-serve-sbatch.sh")
 echo "  Job ID: $INDEX_JID"
 wait_for_endpoint "$SCRATCH/index.endpoint" "F-index"
+
+echo "Submitting G-teleprompter..."
+sbatch "$PROJECT_ROOT/11-sop/hpc/teleprompter-hpc-poll.sh"
 
 # Z-poll must not start until Ollama, embed server, and index server are all running.
 echo "Submitting Z-poll (depends on B-ollama:$OLLAMA_JID, D-embed:$EMBED_JID, F-index:$INDEX_JID)..."

@@ -89,3 +89,15 @@ echo "  embed-server  : http://localhost:8765/health"
 echo "  index-server  : http://localhost:8766/health"
 echo "Finished : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "============================================"
+
+echo ""
+echo "--- Running pipeline for pending audio files ---"
+bash pipeline-docker.sh 
+
+echo ""
+echo "--- Running teleprompter for pending SOPs ---"
+find sync/input -name "*.sop.md" | sort | while read -r sop; do
+    bash 11-sop/docker/run-teleprompter.sh "$sop" 
+done
+
+
