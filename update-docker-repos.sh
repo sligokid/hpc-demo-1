@@ -14,3 +14,6 @@ docker buildx build --platform linux/amd64 -t sligokid/whisper-hpc:latest . --pu
 
 # # Build and push the sop-tools Docker image
 # docker buildx build --platform linux/amd64 -t sligokid/sop-tools:latest -f 11-sop/docker/Dockerfile . --push
+
+# # Build and push the tts-tools Docker image
+# docker buildx build --platform linux/amd64 -t sligokid/tts-tools:latest -f 12-tts/docker/Dockerfile . --push
