@@ -26,7 +26,7 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 3. Feature extraction from transcript (title, description, tags, goals, and skills) via LLM.
 4. Cloud to HPC transfer pipeline for data transfer and governance via rclone.
 5. Sentiment analysis over chunks of video to form an average sentiment score.
-6. A searchable Vector database ok knowledge for similarity search, clustering, and drill-down/aggregation.
+6. A searchable Vector database of knowledge for similarity search, clustering, and drill-down/aggregation.
 7. An interactive knowlege graph to show relationships between videos.
 8. A RAG based chat agent that can answer questions about the video knowledge base.
 
