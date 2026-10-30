@@ -18,7 +18,7 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 6. How can we group, index, search, retrieve and rank videos in a way that is useful for business users?
 7. How are all the videos related to each other?
 8. How can we have a conversation with our video knowledge base ?
-
+9. How do we turn captured video knowledge into reusable procedures (SOP) and presenter-ready scripts (Teleprompter)?
 
 ## Solution
 1. Fine-tune `openai/whisper` for multiple languages using Google FLEURS dataset on HPC
@@ -29,38 +29,7 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 6. A searchable Vector database of knowledge for similarity search, clustering, and drill-down/aggregation.
 7. An interactive knowlege graph to show relationships between videos.
 8. A RAG based chat agent that can answer questions about the video knowledge base.
-
-## Example Agent interactions
-
-**Factual search** (`search_knowledge_base`):
-```
-> What is Slick+ and how does it work?
-```
-
-**Creator / title lookup** (`search_knowledge_base` → `get_video_metadata`):
-```
-> Which video features Linda Hegarty and what are the key topics?
-```
-
-**Full transcript** (`get_full_transcript`):
-```
-> Give me the full transcript of the Slick+ intro video
-```
-
-**Summary Generation** (`generate_summary`):
-```
-> Create a summary of the Slick+ intro video
-```
-
-**Playlist Generation** (`generate_playlist`):
-```
-> Create a Into to Slick Playlist for a new hire
-```
-
-**Multi-hop** (agent calls multiple tools autonomously):
-```
-> What are the main topics covered in the AI videos and who are the speakers?
-```
+9. SOP generation (`sop.py`) extracts structured operating procedures from transcripts + analysis; teleprompter generation (`teleprompter.py`) converts any SOP into speech-optimised presenter scripts.
 
 ---
 
@@ -135,6 +104,14 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
                                  │  sync/output/<lang>/<stem>.sop.md
                                  │                         .sop.pdf
                                  ▼
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │               STAGE 11b: TELEPROMPTER  (standalone SLURM array)         │
+  │  teleprompter.py — Qwen 2.5 via Ollama                                  │
+  │  Input: any .sop.md/.txt/.pdf/.docx — not limited to pipeline output    │
+  │  teleprompter-hpc-submit.sh / teleprompter-hpc-poll.sh                  │
+  └──────────────────────────────┬───────────────────────────────────────────┘
+                                 │  sync/output/<lang>/<stem>.teleprompter.md
+                                 ▼
                     ┌────────────┴──────────┬──────────────────────┐
                     ▼                       ▼                      ▼
   ┌──────────────────────┐  ┌───────────────────────────┐  ┌───────────────────────────┐
@@ -169,6 +146,7 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 | `GENERATE_MODEL` | `llama3:latest` | 3-analyze / 10-agent | Metadata extraction (title, description, tags, goals, skills); `generate_summary` / `generate_playlist` |
 | `AGENT_MODEL` | `qwen2.5:7b` | 10-agent | LangGraph tool-calling and reasoning |
 | `sop.model` | `qwen2.5:7b` | 11-sop | SOP generation from transcript + analysis |
+| `teleprompter.model` | `qwen2.5:7b` | 11-sop | Teleprompter script generation from any SOP document |
 
 ## Development
 
@@ -188,7 +166,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup, Docker, HPC launch instruc
 | [`8-search/`](8-search/README.md) | Semantic nearest-neighbour search over indexed transcript chunks |
 | [`9-graph/`](9-graph/README.md) | Knowledge graph builder and personalised playlist generator |
 | [`10-agent/`](10-agent/README.md) | LangGraph conversational agent — factual Q&A, summaries, playlists with human approval gate |
-| [`11-sop/`](11-sop/local/README.md) | SOP generator — produces `.sop.md` and `.sop.pdf` from transcript + analysis via Qwen 2.5 |
+| [`11-sop/`](11-sop/README.md) | SOP & Teleprompter generation — `sop.py` produces `.sop.md` + `.sop.pdf` from transcript + analysis; `teleprompter.py` converts any SOP into a speech-optimised presenter script (`.teleprompter.md`) |
 | [`pipeline.py`](pipeline.py) | End-to-end orchestrator: infer → analyze → sentiment → embed → index → sop |
 | [`pipeline.yaml`](pipeline.yaml) | Central configuration (model, server URLs, feature flags) |
 | `pipeline-local.sh` | Run full pipeline locally with native Python and Ollama |
