@@ -33,45 +33,54 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 
 ## Example use cases
 
-**Feature Extraction, Auto Tagging**
+### Feature Extraction, Auto Tagging
 
-video ──▶ feature files.
+*video ──▶ feature files*
 
 Upload a library of internal how-to videos. The pipeline transcribes, and extracts metadata and features such as title, description, tags, goals, and skills via LLM. The results are written to files:
 
-- `<stem>*.transcript.txt` 
-- `<stem>*.analysis.json`
-- `<stem>*.textgrid`
+- `<stem>.transcript.txt`
+- `<stem>.analysis.json`
+- `<stem>.textgrid`
 
-Results can be used in Slick+ for video metadata enrichment. 
+Results can be used in Slick+ for video metadata enrichment.
 
+---
 
-**Capturing expert knowledge before someone leaves**
+### Capturing expert knowledge before someone leaves
 
-Upload a recorded video of a departing expert walking through their key processes. The SOP generator turns the transcript + analysis into a structured Standard Operating Procedure document. 
+Upload a recorded video of a departing expert walking through their key processes. The SOP generator turns the transcript + analysis into a structured Standard Operating Procedure document.
 
-- `<stem>*.sop.md` 
-- `<stem>*.sop.pdf`
+- `<stem>.sop.md`
+- `<stem>.sop.pdf`
 
-Results can be edited, approved and signed off for sharing within Slick+
+Results can be edited, approved and signed off for sharing within Slick+.
 
+---
 
-**Video Presenter enablement at scale**
+### Video Presenter enablement at scale
 
 A subject-matter expert writes and uploads a SOP. The teleprompter pipeline runs overnight on HPC, producing a speech-optimised script for every procedure document in the library — ready for recording the next morning.
-- `<stem>*.teleprompter.md`
+
+- `<stem>.teleprompter.md`
 
 Results can be edited to provide supporting materials for video content generation within Slick+.
 
-## Agentic use cases (Experimental - Agent is local to LUMI)
+---
 
-**Onboarding a new hire**
+## Agentic use cases *(Experimental — Agent is local to LUMI)*
+
+*Video Agent ──▶ chat*
+### Onboarding a new hire
+
 Upload a library of internal how-to videos. The pipeline transcribes, tags, and indexes them. The new hire asks the agent questions in natural language — *"How do we handle a customer escalation?"* — and gets cited answers with timestamps, without watching every video.
 
-**Compliance and audit trails**
-Tag all videos with goals and skills at ingest time. Use the knowledge graph to verify that required training topics are covered, identify gaps, and export a graph visualisation for auditors.
+### Compliance and audit trails
 
-**Personalised learning playlists**
+Tag all videos with goals and skills at ingest time. Use the knowledge graph to verify that required training topics are covered, identify gaps, and export a graph visualisation for auditors. 
+
+### Personalised learning playlists
+
 A manager asks the agent to *"create an intro to Slick+ playlist for a new hire in sales"*. The agent retrieves relevant chunks, ranks them by role relevance, and presents a draft playlist for human approval before saving.
 
 
