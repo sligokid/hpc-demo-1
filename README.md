@@ -22,7 +22,7 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 
 ## Solution
 1. Fine-tune `openai/whisper` for multiple languages using Google FLEURS dataset on HPC
-2. Inference pipeline transformimg video to transcript using fine-tuned speech recognition models.
+2. Inference pipeline transforming video to transcript using fine-tuned speech recognition models.
 3. Feature extraction from transcript (title, description, tags, goals, and skills) via LLM.
 4. Cloud to HPC transfer pipeline for data transfer and governance via rclone.
 5. Sentiment analysis over chunks of video to form an average sentiment score.
@@ -41,7 +41,6 @@ Upload a library of internal how-to videos. The pipeline transcribes, and extrac
 
 - `<stem>.transcript.txt`
 - `<stem>.analysis.json`
-- `<stem>.textgrid`
 
 Results can be used in Slick+ for video metadata enrichment.
 
