@@ -77,27 +77,64 @@ Ideally, the review step is built into the flow rather than left as an afterthou
 
 - `<stem>.teleprompter.md`
 
+### Global workforce — any language, one knowledge base
+
+*multilingual video ──▶ single searchable knowledge base*
+
+Employees record in Spanish, French, Arabic, or Mandarin and upload as-is. Every video is transcribed, translated, and indexed into one shared knowledge base — no human translation, no duplicate effort per language.
+
+- `<stem>.transcript.txt`
+- `<stem>.analysis.json`
+
+### See your company's knowledge as a map
+
+*indexed knowledge base ──▶ interactive graph*
+
+Open one HTML file and see every video as a node. Related topics cluster together, gaps are immediately visible, and negative-sentiment content is flagged in red.
+
+- `graph.html` (interactive knowledge graph)
+
+### Compliance and audit trails
+
+*knowledge graph ──▶ coverage report*
+
+Tag all videos with goals and skills at ingest time. Use the knowledge graph to verify that required training topics are covered, identify gaps, and export a visualisation for auditors.
+
+- `graph.html` (interactive knowledge graph)
+
+### Spot tone problems before they spread
+
+*video ──▶ sentiment score*
+
+The pipeline scores tone chunk-by-chunk before a video is shared. A frustrated rant, safety complaint, or off-message recording is flagged automatically — no one has to watch it first.
+
+- `<stem>.analysis.json` (includes per-chunk sentiment labels and scores)
+
 ---
 
 ## Agentic use cases *(Experimental — Agent is local to LUMI)*
 
-*Video Agent ──▶ chat*
 ### Onboarding a new hire
 
-Upload a library of internal how-to videos. The pipeline transcribes, tags, and indexes them. The new hire asks the agent questions in natural language — *"How do we handle a customer escalation?"* — and gets cited answers with timestamps, without watching every video.
+*video library ──▶ agent Q&A*
 
-### Compliance and audit trails
+A new hire asks the agent questions in natural language — *"How do we fix a broken down printer?"* — and gets cited answers with timestamps, without watching every video.
 
-Tag all videos with goals and skills at ingest time. Use the knowledge graph to verify that required training topics are covered, identify gaps, and export a graph visualisation for auditors. 
-
-### Personalised learning playlists
-
-A manager asks the agent to *"create an intro to Slick+ playlist for a new hire in sales"*. The agent retrieves relevant chunks, ranks them by role relevance, and presents a draft playlist for human approval before saving.
-
+- Cited video list with source timestamps.
 
 ---
 
-## Workflow Overview
+### Personalised learning playlists
+
+*role profile ──▶ curated playlist*
+
+A manager asks the agent to *"create an intro to Slick+ playlist for a new hire in sales"*. The agent retrieves relevant chunks, ranks them by role relevance, and presents a draft for human approval before saving.
+
+- Draft playlist with manager approval gate
+
+---
+
+## Data Pipeline Overview
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
