@@ -12,7 +12,15 @@ HPC deployment for `12-tts`: three SLURM scripts that run `tts.py` via Singulari
 
 SLURM account: `project_465003359`, partition: `small`.
 
+> **Ollama version requirement:** The `/v1/audio/speech` endpoint requires Ollama **0.40.11 or later** running on the HPC Ollama node. Verify with `cat $SCRATCH/ollama.endpoint | xargs -I{} curl -s http://{}/api/version` before submitting jobs. The phonon model must be pulled into the HPC Ollama instance before the first job runs.
+>
+> **SIF requirement:** A new `tts-tools.sif` is needed at `/scratch/project_465003359/mcgowank/tts-tools.sif`. This SIF must be built from `12-tts/docker/Dockerfile` and converted via `singularity build`. The existing `sop-tools.sif` does not include `tts.py` or the TTS dependencies.
+
 ## Acceptance criteria
+
+- [ ] Ollama on HPC is version 0.40.11+ (verified before submitting)
+- [ ] `phonon` model is pulled into the HPC Ollama instance
+- [ ] `tts-tools.sif` exists at `/scratch/project_465003359/mcgowank/tts-tools.sif`
 
 - [ ] `tts-sbatch.sh` runs `tts.py` via `singularity exec … bash -c "…"` with correct `/workspace` binding
 - [ ] `tts-sbatch.sh` reads `OLLAMA_HOST` from `$SCRATCH/ollama.endpoint` and exits with error if file is missing

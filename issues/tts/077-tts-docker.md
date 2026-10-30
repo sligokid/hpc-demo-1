@@ -12,7 +12,12 @@ Docker deployment for `12-tts`: a `Dockerfile`, a `run-tts.sh` convenience scrip
 
 Follows the exact pattern of `11-sop/docker/`.
 
+> **Ollama version requirement:** The `/v1/audio/speech` endpoint requires Ollama **0.40.11 or later**. The Docker Ollama service (`docker compose up ollama`) must be running this version or newer, otherwise the TTS call will return 404. Verify with `docker compose exec ollama ollama --version` before running. The phonon model must also be pulled into the Docker Ollama instance: `docker compose exec ollama ollama pull phonon`.
+
 ## Acceptance criteria
+
+- [ ] Ollama Docker service is version 0.40.11+ (verified before testing)
+- [ ] `ollama pull phonon` has been run inside the Docker Ollama container
 
 - [ ] `12-tts/docker/Dockerfile` builds successfully with `docker build`
 - [ ] Container entrypoint is `python /app/tts.py`
