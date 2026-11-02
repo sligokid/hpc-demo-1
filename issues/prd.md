@@ -43,7 +43,7 @@ Add a standalone `12-tts` module that takes a `{stem}.teleprompter.md` file, ext
 - **`12-tts/docker/docker-buildx-publish.sh`** — Builds and pushes `sligokid/tts-tools:latest` for linux/amd64 from project root context.
 - **`12-tts/hpc/tts-sbatch.sh`** — SLURM array task. Reads manifest, derives SOP file path per array index, runs `tts.py` via `singularity exec` with `bash -c` wrapper for `LD_LIBRARY_PATH`. Binds project root as `/workspace` using `SLURM_SUBMIT_DIR`. Reads Ollama endpoint from file at `$SCRATCH/ollama.endpoint`.
 - **`12-tts/hpc/tts-hpc-submit.sh`** — Scans `sync/input/*/` for `*.teleprompter.md` files whose `*.teleprompter.wav` does not yet exist in `sync/output/`. Writes timestamped manifest to `logs/`. Submits SLURM array job.
-- **`12-tts/hpc/tts-hpc-poll.sh`** — SLURM job that calls `tts-hpc-submit.sh` and reschedules itself every 10 minutes via a trap on EXIT. Stoppable with `scancel --name=G-tts`.
+- **`12-tts/hpc/tts-hpc-poll.sh`** — SLURM job that calls `tts-hpc-submit.sh` and reschedules itself every 10 minutes via a trap on EXIT. Stoppable with `scancel --name=H-tts`.
 
 ### API Contract
 

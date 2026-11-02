@@ -2,10 +2,10 @@
 # Run tts.py inside Docker for a single teleprompter file.
 #
 # Usage (from project root):
-#   bash 12-tts/docker/run-tts.sh results/en/myvideo.teleprompter.md
+#   bash 12-tts/docker/run-tts.sh sync/output/en/myvideo.teleprompter.md
 #
-# Reads:  results/{lang}/{stem}.teleprompter.md   (host path; mounted read-write at /results)
-# Writes: results/{lang}/{stem}.teleprompter.wav
+# Reads:  sync/output/{lang}/{stem}.teleprompter.md   (host path; mounted at /sync/output)
+# Writes: sync/output/{lang}/{stem}.teleprompter.wav
 #
 # Environment variables:
 #   OLLAMA_HOST    host:port for Ollama   (default: ollama:11434)
@@ -27,7 +27,7 @@ IMAGE=${TTS_IMAGE:-slick-plus-tts}
 LANG=$(basename "$(dirname "$TELEPROMPTER_FILE")")
 STEM=$(basename "$TELEPROMPTER_FILE" .teleprompter.md)
 
-mkdir -p "$PROJECT_ROOT/results/$LANG"
+mkdir -p "$PROJECT_ROOT/sync/output/$LANG"
 
 # Pull the TTS model into Ollama if not already present
 if ! docker compose exec ollama ollama list 2>/dev/null | grep -q "^${MODEL}"; then
@@ -46,10 +46,10 @@ fi
 
 docker run --rm \
     --network hpc-demo-1_default \
-    -v "$PROJECT_ROOT/results:/results" \
+    -v "$PROJECT_ROOT/sync/output:/sync/output" \
     "$IMAGE" \
-    --input       "/results/$LANG/$STEM.teleprompter.md" \
-    --output      "/results/$LANG/$STEM" \
+    --input       "/sync/output/$LANG/$STEM.teleprompter.md" \
+    --output      "/sync/output/$LANG/$STEM" \
     --ollama-host "$OLLAMA_HOST" \
     --voice       "$VOICE" \
     --model       "$MODEL"
