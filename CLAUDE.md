@@ -24,7 +24,7 @@ python 1-train/train.py --language es --output_dir ./checkpoints/es --max_train_
 **Submit all 5 languages in parallel on HPC:**
 ```bash
 mkdir -p logs
-sbatch 1-train/submit-gpu.sh
+sbatch 1-train/hpc/train-sbatch-gpu.sh
 ```
 
 **Monitor SLURM jobs:**
@@ -50,8 +50,8 @@ python pipeline.py --file inbox/en/foo.mp3   # single file (also used as HPC arr
 | File | Role |
 |---|---|
 | `1-train/train.py` | Full training pipeline: loads FLEURS, preprocesses audio to mel features, fine-tunes Whisper via `Seq2SeqTrainer`, reports WER per epoch |
-| `1-train/submit-gpu.sh` | SLURM job array definition — maps array index 0–4 to language codes, allocates 1 GPU per task |
-| `1-train/submit-cpu.sh` | SLURM job array definition — CPU-only fallback variant |
+| `1-train/hpc/train-sbatch-gpu.sh` | SLURM job array definition — maps array index 0–4 to language codes, allocates 1 GPU per task |
+| `1-train/hpc/train-sbatch-cpu.sh` | SLURM job array definition — CPU-only fallback variant |
 | `2-inference/infer.py` | **Primary inference module.** Standalone CLI and pipeline import. Exports `transcribe()` → plain string and `transcribe_with_segments()` → `(text, segments)` tuple for downstream embedding. `--segments` flag writes `transcript.txt` and timestamped `segments.json` into the same directory as the audio file. |
 | `2-inference/infer-30-secs.py` | Single 30-second window variant — uses `WhisperProcessor`/`WhisperForConditionalGeneration` directly (no chunking); limited to ≤30 s audio; exports `transcribe()` → plain string. |
 | `2-inference/infer-full.py` | Chunked-pipeline variant — uses HuggingFace `pipeline` with `chunk_length_s=30, stride_length_s=5`; supports any-length audio; exports `transcribe()` → plain string. |
