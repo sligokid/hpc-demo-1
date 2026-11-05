@@ -4,7 +4,7 @@ End-to-end setup for the Google Drive ↔ LUMI HPC sync pipeline. Follow these s
 
 Polls Google Drive every 5 minutes via a self-resubmitting SLURM job.
 
-**Inbound (Drive → LUMI):** rclone copies new files from the Drive input folder to `sync/input/` — rclone handles deduplication natively (size/mtime comparison), so only new files are transferred. After each download pass, newly arrived filenames are appended to `logs/sync-manifest.txt` as a record for the pipeline to act on. A file already in the manifest is skipped to prevent double-counting.
+**Inbound (Drive → LUMI):** rclone copies new files from the Drive input folder to `sync/input/` — rclone handles deduplication natively (size/mtime comparison), so only new files are transferred. After each download pass, newly arrived filenames are appended to `logs/sync-manifest.txt` as a write-only audit log. `sync.sh` checks this list to avoid recording the same file twice on subsequent cycles; the pipeline does not read this file.
 
 **Outbound (LUMI → Drive):** rclone copies processed outputs from `sync/output/` back to the Drive output folder, again using rclone's native deduplication — no manifest involved.
 
@@ -23,11 +23,11 @@ None — this stage performs no model inference. It uses `rclone` to transfer fi
 Each sync cycle runs the following steps in order:
 
 1. **Inbound sync** — `rclone copy gdrive:whisper-sync/input/ sync/input/` downloads any new files from Google Drive. rclone skips files already present (size/mtime comparison) so only genuinely new files are transferred.
-2. **Manifest update** — each newly downloaded filename is appended to `logs/sync-manifest.txt`. Files already listed in the manifest are skipped to prevent reprocessing on subsequent cycles.
+2. **Manifest update** — each newly downloaded filename is appended to `logs/sync-manifest.txt` as a write-only audit log. `sync.sh` checks this list to skip filenames it has already recorded, preventing duplicate entries across cycles. This file is not consumed by the pipeline.
 3. **Outbound sync** — `rclone copy sync/output/ gdrive:whisper-sync/output/` uploads processed results (transcripts, analysis JSON, graph HTML) back to Google Drive.
 4. **Self-resubmit** — the SLURM job resubmits itself with a 5-minute delay via `trap ... EXIT`. The chain runs indefinitely without crontab or manual intervention.
 
-The pipeline (`Z-poll`) reads `logs/sync-manifest.txt` on each cycle and submits a new array job for any file not yet marked `.done`.
+On each cycle, `pipeline-hpc-submit.sh` globs `sync/input/` directly to build a fresh `logs/pipeline-manifest-<ts>.txt` work list; the SLURM array then processes every file in that list. `logs/sync-manifest.txt` is **not** read by the pipeline — it is a write-only audit log maintained solely by `sync.sh`.
 
 ---
 
