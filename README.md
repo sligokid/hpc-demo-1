@@ -3,6 +3,26 @@ HPC-Enhanced Generative AI Agent for Hyper-Personalized Knowledge Sharing in Lar
 
 **Goal: Turning speech & video into machine-readable knowledge at HPC scale.**
 
+## What this is
+
+An end-to-end, unattended HPC pipeline that transforms short-form video and audio into machine-readable organisational knowledge. It runs on [LUMI](https://www.lumi-supercomputer.eu/) with no manual babysitting: a self-resubmitting SLURM job (`pipeline-hpc-poll.sh`) wakes every 10 minutes, picks up new files that arrived from Google Drive, and submits a SLURM array job covering twelve pipeline stages:
+
+**1-train** fine-tunes Whisper on Google FLEURS; **2-inference** transcribes audio; **3-analyze** extracts metadata via LLM; **4-file-sync** syncs files between Google Drive and LUMI Lustre scratch; **5-sentiment** scores tone per chunk; **6-embed** encodes transcripts into 1024-dim vectors; **7-index** writes vectors to Qdrant; **8-search** provides semantic retrieval; **9-graph** builds a knowledge graph and generates playlists; **10-agent** runs a LangGraph conversational agent; **11-sop/teleprompter** converts transcripts into SOPs and presenter scripts; **12-tts** synthesises presenter scripts into spoken WAV audio via Ollama `lfm3-audio`.
+
+The pipeline supports five languages: **en, es, fr, zh-CN, ar** (see [Supported Languages](#supported-languages)). Google Drive is the human-facing surface for uploading input and downloading output; LUMI Lustre scratch (`sync/`) is the working store; Qdrant is the queryable vector index. Each language is fine-tuned independently as a separate SLURM job — no shared multilingual model, no serialisation. See per-stage READMEs and the [Data Pipeline Overview](#data-pipeline-overview) for full details.
+
+## Supported Languages
+
+| Language | Code | FLEURS Locale | Checkpoint Path |
+|---|---|---|---|
+| English | en | en_us | checkpoints/en |
+| Spanish | es | es_419 | checkpoints/es |
+| French | fr | fr_fr | checkpoints/fr |
+| Mandarin | zh-CN | cmn_hans_cn | checkpoints/zh-CN |
+| Arabic | ar | ar_eg | checkpoints/ar |
+
+> **Note:** `pipeline.yaml` currently uses `zh` for the Mandarin language code — this is a known inconsistency with the training scripts and checkpoint paths (which use `zh-CN`). Full resolution requires fixes to `pipeline.yaml`, `pipeline.py`, and input directory naming; that work is tracked separately and is not addressed in this README update.
+
 ## How work really gets done
 
 This experiment aims to validate and scale a new generative AI module that transforms internal tacit knowledge, captured through short-form video, into hyper-personalized, real-time learning content tailored to each employee’s role, behavior, and moment-of-need. The core innovation lies in combining generative AI, multilingual transcription, and behavioral personalization to address a persistent problem in large, distributed workplaces: the loss, inaccessibility, and underutilization of institutional know-how. Traditional learning management systems fail to capture informal insights and peer knowledge that are critical for onboarding, retention, and productivity. 
@@ -30,6 +50,7 @@ People first. AI assisted. Searchable by default. Structured for managers. Ready
 7. An interactive knowlege graph to show relationships between videos.
 8. A RAG based chat agent that can answer questions about the video knowledge base.
 9. SOP file generation extracts structured operating procedures from transcripts + analysis; Teleprompter file generation converts any SOP into speech-optimised presenter scripts.
+10. Text-to-speech synthesis converts a `.teleprompter.md` presenter script into a spoken WAV audio file using the `lfm3-audio` model via Ollama.
 
 ## Example use cases
 
@@ -191,7 +212,13 @@ A manager asks the agent to *"create an intro to Slick+ playlist for a new hire 
                                            .teleprompter.md
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  7 · OUTPUT SYNC
+  7 · TTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  .teleprompter.md  ──▶  lfm3-audio (Ollama)  ──▶  .teleprompter.wav
+                          stage 12 · tts.py          chunked PCM → merged WAV
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  8 · OUTPUT SYNC
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   LUMI sync/output/  ──▶  rclone  ──▶  Google Drive whisper-sync/output/
@@ -201,6 +228,7 @@ A manager asks the agent to *"create an intro to Slick+ playlist for a new hire 
   .sop.md 
   .sop.pdf
   .teleprompter.md
+  .teleprompter.wav
   graph.html
 
 ```
@@ -218,10 +246,11 @@ A manager asks the agent to *"create an intro to Slick+ playlist for a new hire 
 | `AGENT_MODEL` | `qwen2.5:7b` | 10-agent | LangGraph tool-calling and reasoning |
 | `sop.model` | `qwen2.5:7b` | 11-sop | SOP generation from transcript + analysis |
 | `teleprompter.model` | `qwen2.5:7b` | 11-sop | Teleprompter script generation from any SOP document |
+| *(Ollama model name)* | `lfm3-audio` | 12-tts | Text-to-speech — converts presenter script text to WAV audio |
 
 ## Development
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup, Docker, HPC launch instructions, testing, and monitoring.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup, Docker, HPC launch instructions, and testing. Manifest file behaviour is documented in the [Manifest files](#manifest-files) section below.
 
 ## Repository Structure
 
@@ -238,6 +267,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup, Docker, HPC launch instruc
 | [`9-graph/`](9-graph/README.md) | Knowledge graph builder and personalised playlist generator |
 | [`10-agent/`](10-agent/README.md) | LangGraph conversational agent — factual Q&A, summaries, playlists with human approval gate |
 | [`11-sop/`](11-sop/README.md) | SOP & Teleprompter generation — `sop.py` produces `.sop.md` + `.sop.pdf` from transcript + analysis; `teleprompter.py` converts any SOP into a speech-optimised presenter script (`.teleprompter.md`) |
+| [`12-tts/`](12-tts/README.md) | Text-to-speech — converts `.teleprompter.md` to a spoken WAV file using `lfm3-audio` via Ollama; supports local, Docker, and HPC (SLURM array) execution |
 | [`pipeline.py`](pipeline.py) | End-to-end orchestrator: infer → analyze → sentiment → embed → index → sop |
 | [`pipeline.yaml`](pipeline.yaml) | Central configuration (model, server URLs, feature flags) |
 | `pipeline-local.sh` | Run full pipeline locally with native Python and Ollama |
@@ -249,6 +279,15 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for local setup, Docker, HPC launch instruc
 | `roles.yaml` | Role → tag mapping used by `9-graph/playlist.py` |
 
 
+
+## Manifest files
+
+Two manifest files are written during each cycle; they serve different purposes and must not be confused.
+
+| File | Written by | Read by | Purpose |
+|---|---|---|---|
+| `logs/sync-manifest.txt` | `4-file-sync/sync.sh` | `sync.sh` (idempotency check), test scripts | Audit log of every file that has ever arrived from Google Drive. `sync.sh` appends new filenames on each inbound cycle and uses the list to avoid recording the same filename twice in the manifest. **The pipeline never reads this file.** |
+| `logs/pipeline-manifest-<ts>.txt` | `pipeline-hpc-submit.sh` | SLURM array jobs | Per-cycle work list, built by re-globbing `sync/input/` directly at submit time. This is the file the SLURM array actually processes each cycle. Because the manifest is regenerated from the filesystem every cycle, any file still present in `sync/input/` will be resubmitted on subsequent cycles — permanently failing files are never automatically retired (see [issues/013.md](issues/013.md)). |
 
 ## References
 
