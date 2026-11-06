@@ -96,8 +96,18 @@ bash pipeline-docker.sh
 
 echo ""
 echo "--- Running teleprompter for pending SOPs ---"
-find sync/input -name "*.sop.md" | sort | while read -r sop; do
-    bash 11-sop/docker/run-teleprompter.sh "$sop" 
-done
+while IFS= read -r sop; do
+    bash 11-sop/docker/run-teleprompter.sh "$sop" < /dev/null || echo "WARNING: teleprompter failed for $sop — continuing"
+done < <(find sync/input -name "*.sop.md" | sort)
+
+echo ""
+echo "--- Running TTS for pending teleprompter files ---"
+while IFS= read -r tp; do
+    lang=$(basename "$(dirname "$tp")")
+    stem=$(basename "$tp" .teleprompter.md)
+    wav="sync/output/$lang/$stem.teleprompter.wav"
+    [ -f "$wav" ] && continue
+    bash 12-tts/docker/run-tts.sh "$tp" < /dev/null || echo "WARNING: TTS failed for $tp — continuing"
+done < <(find sync/output -name "*.teleprompter.md" | sort)
 
 
