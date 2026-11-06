@@ -10,3 +10,4 @@ singularity pull ../whisper-sync.sif docker://sligokid/whisper-sync:latest
 singularity pull ../embeddings-api.sif docker://sligokid/embeddings-api:latest
 singularity pull ../agent.sif docker://sligokid/agent:latest
 singularity pull ../sop-tools.sif docker://sligokid/sop-tools:latest
+singularity pull ../tts-tools.sif docker://sligokid/tts-tools:latest

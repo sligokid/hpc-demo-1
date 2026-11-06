@@ -37,7 +37,7 @@ SCRATCH=${SCRATCH:-/scratch/project_465003359/mcgowank}
 OLLAMA_SIF=${OLLAMA_SIF:-$SCRATCH/ollama.sif}
 OLLAMA_MODELS_DIR=$SCRATCH/ollama-models
 ENDPOINT_FILE=$SCRATCH/ollama.endpoint
-MODELS=("llama3:latest" "qwen2.5:7b")  # llama3: analyze, qwen2.5:7b: agent + sop
+MODELS=("llama3:latest" "qwen2.5:7b" "lfm3-audio")  # llama3: analyze, qwen2.5:7b: agent + sop, lfm3-audio: tts
 # ----------------------------------
 
 mkdir -p logs "$OLLAMA_MODELS_DIR"
